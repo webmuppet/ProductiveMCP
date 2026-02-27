@@ -59,7 +59,7 @@ const config = loadConfig();
 // API constants
 // ---------------------------------------------------------------------------
 
-export const API_URL = "https://api.productive.io/api/v2";
+export const API_URL = process.env.PRODUCTIVE_BASE_URL || "https://api.productive.io/api/v2";
 export const CHARACTER_LIMIT = 25000;
 
 // Rate limit configuration

@@ -16,7 +16,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const API_URL = "https://api.productive.io/api/v2";
+const API_URL = process.env.PRODUCTIVE_BASE_URL || "https://api.productive.io/api/v2";
 
 // ---------------------------------------------------------------------------
 // Read .env

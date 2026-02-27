@@ -36,8 +36,8 @@ export const CreateTaskSchema = z
       .int()
       .min(0, "Initial estimate must be a positive number")
       .optional(),
-    task_type: z.enum(TASK_TYPES).default("Task"),
-    priority: z.enum(PRIORITIES).default("Medium"),
+    task_type: z.enum(TASK_TYPES).optional(),
+    priority: z.enum(PRIORITIES).optional(),
     workflow_status: z.string().optional(),
     labels: z.array(z.string()).optional(),
     parent_task_id: z.string().optional(),
@@ -116,8 +116,8 @@ export const BatchTaskItemSchema = z
     start_date: ISO8601DateSchema.optional(),
     task_list_id: z.string().optional(),
     assignee_id: z.string().optional(),
-    task_type: z.enum(TASK_TYPES).default("Task"),
-    priority: z.enum(PRIORITIES).default("Medium"),
+    task_type: z.enum(TASK_TYPES).optional(),
+    priority: z.enum(PRIORITIES).optional(),
   })
   .strict();
 

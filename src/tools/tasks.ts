@@ -131,9 +131,13 @@ export async function createTask(
     if (optionId) {
       customFields[CUSTOM_FIELD_IDS.TASK_TYPE] = optionId;
     } else {
-      throw new Error(
-        `Task type "${args.task_type}" does not have a configured option ID. Please update TASK_TYPE_OPTIONS in constants.ts`,
-      );
+      try {
+        console.error(
+          `Warning: Task type "${args.task_type}" is not configured in Productive. Skipping task_type field.`,
+        );
+      } catch {
+        // Ignore logging errors
+      }
     }
   }
 
@@ -377,9 +381,13 @@ export async function updateTask(
     if (optionId) {
       customFields[CUSTOM_FIELD_IDS.TASK_TYPE] = optionId;
     } else {
-      throw new Error(
-        `Task type "${args.task_type}" does not have a configured option ID. Please update TASK_TYPE_OPTIONS in constants.ts`,
-      );
+      try {
+        console.error(
+          `Warning: Task type "${args.task_type}" is not configured in Productive. Skipping task_type field.`,
+        );
+      } catch {
+        // Ignore logging errors
+      }
     }
   }
 

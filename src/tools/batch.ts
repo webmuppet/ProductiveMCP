@@ -77,16 +77,20 @@ export async function createTasksBatch(
       // Add custom fields (task_type and priority)
       const customFields: Record<string, string> = {};
 
-      // task_type has a default from schema, so it will always be present
-      const taskTypeOptionId = TASK_TYPE_OPTIONS[taskInput.task_type];
-      if (taskTypeOptionId) {
-        customFields[CUSTOM_FIELD_IDS.TASK_TYPE] = taskTypeOptionId;
+      // task_type is optional — only set if provided and configured
+      if (taskInput.task_type) {
+        const taskTypeOptionId = TASK_TYPE_OPTIONS[taskInput.task_type];
+        if (taskTypeOptionId) {
+          customFields[CUSTOM_FIELD_IDS.TASK_TYPE] = taskTypeOptionId;
+        }
       }
 
-      // priority has a default from schema, so it will always be present
-      const priorityOptionId = PRIORITY_OPTIONS[taskInput.priority];
-      if (priorityOptionId) {
-        customFields[CUSTOM_FIELD_IDS.PRIORITY] = priorityOptionId;
+      // priority is optional — only set if provided and configured
+      if (taskInput.priority) {
+        const priorityOptionId = PRIORITY_OPTIONS[taskInput.priority];
+        if (priorityOptionId) {
+          customFields[CUSTOM_FIELD_IDS.PRIORITY] = priorityOptionId;
+        }
       }
 
       if (Object.keys(customFields).length > 0) {
