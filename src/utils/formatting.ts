@@ -55,6 +55,14 @@ import type {
   FormattedServiceType,
   ProductiveDoc,
   ProductiveDocNode,
+  Deal,
+  DealAttributes,
+  FormattedDeal,
+  Activity,
+  ActivityAttributes,
+  FormattedActivity,
+  PipelineStageSummary,
+  PipelineSummary,
 } from "../types.js";
 
 /**
@@ -1919,4 +1927,417 @@ export function formatSingleServiceTypeMarkdown(
   }
 
   return lines.join("\n");
+}
+
+// ─── Deal formatters ──────────────────────────────────────────────────────────
+
+/**
+ * Resolve a deal's relationships from included data and return a FormattedDeal.
+ */
+export function formatDeal(
+  deal: Deal,
+  orgId: string,
+  includedData?: unknown[],
+): FormattedDeal {
+  const attrs = deal.attributes as DealAttributes;
+
+  let dealStatusId: string | null = null;
+  let dealStatusName: string | null = null;
+  let pipelineId: string | null = null;
+  let pipelineName: string | null = null;
+  let companyId: string | null = null;
+  let companyName: string | null = null;
+  let responsibleId: string | null = null;
+  let responsibleName: string | null = null;
+  let projectId: string | null = null;
+  let projectName: string | null = null;
+
+  type IncludedItem = {
+    type: string;
+    id: string;
+    attributes?: Record<string, unknown>;
+  };
+
+  function findIncluded(type: string, id: string): IncludedItem | undefined {
+    return (includedData ?? []).find(
+      (item): item is IncludedItem =>
+        typeof item === "object" &&
+        item !== null &&
+        "type" in item &&
+        (item as IncludedItem).type === type &&
+        "id" in item &&
+        (item as IncludedItem).id === id,
+    );
+  }
+
+  if (
+    deal.relationships?.deal_status?.data &&
+    "id" in deal.relationships.deal_status.data
+  ) {
+    dealStatusId = deal.relationships.deal_status.data.id;
+    const statusItem = findIncluded("deal_statuses", dealStatusId);
+    dealStatusName =
+      (statusItem?.attributes?.name as string | undefined) ?? null;
+  }
+
+  if (
+    deal.relationships?.pipeline?.data &&
+    "id" in deal.relationships.pipeline.data
+  ) {
+    pipelineId = deal.relationships.pipeline.data.id;
+    const pipelineItem = findIncluded("pipelines", pipelineId);
+    pipelineName =
+      (pipelineItem?.attributes?.name as string | undefined) ?? null;
+  }
+
+  if (
+    deal.relationships?.company?.data &&
+    "id" in deal.relationships.company.data
+  ) {
+    companyId = deal.relationships.company.data.id;
+    const companyItem = findIncluded("companies", companyId);
+    companyName =
+      (companyItem?.attributes?.name as string | undefined) ?? null;
+  }
+
+  if (
+    deal.relationships?.responsible?.data &&
+    "id" in deal.relationships.responsible.data
+  ) {
+    responsibleId = deal.relationships.responsible.data.id;
+    const person = findIncluded("people", responsibleId);
+    if (person?.attributes) {
+      const first = (person.attributes.first_name as string | undefined) ?? "";
+      const last = (person.attributes.last_name as string | undefined) ?? "";
+      responsibleName = `${first} ${last}`.trim() || null;
+    }
+  }
+
+  if (
+    deal.relationships?.project?.data &&
+    "id" in deal.relationships.project.data
+  ) {
+    projectId = deal.relationships.project.data.id;
+    const projectItem = findIncluded("projects", projectId);
+    projectName =
+      (projectItem?.attributes?.name as string | undefined) ?? null;
+  }
+
+  return {
+    id: deal.id,
+    name: attrs.name,
+    number: attrs.number ?? null,
+    date: attrs.date ?? null,
+    end_date: attrs.end_date ?? null,
+    probability: attrs.probability ?? null,
+    currency: attrs.currency ?? null,
+    revenue: attrs.revenue_default ?? attrs.revenue ?? null,
+    cost: attrs.cost_default ?? attrs.cost ?? null,
+    profit: attrs.profit_default ?? attrs.profit ?? null,
+    profit_margin: attrs.profit_margin ?? null,
+    purchase_order_number: attrs.purchase_order_number ?? null,
+    deal_status_id: dealStatusId,
+    deal_status_name: dealStatusName,
+    pipeline_id: pipelineId,
+    pipeline_name: pipelineName,
+    company_id: companyId,
+    company_name: companyName,
+    responsible_id: responsibleId,
+    responsible_name: responsibleName,
+    project_id: projectId,
+    project_name: projectName,
+    closed_at: attrs.closed_at ?? null,
+    last_activity_at: attrs.last_activity_at ?? null,
+    created_at: attrs.created_at,
+    url: `https://app.productive.io/${orgId}/sales/${deal.id}`,
+  };
+}
+
+/**
+ * Format a flat list of deals as markdown.
+ */
+export function formatDealListMarkdown(
+  deals: FormattedDeal[],
+  total?: number,
+): string {
+  if (deals.length === 0) {
+    return "No deals found.";
+  }
+
+  const lines = ["# Deals", ""];
+
+  if (total !== undefined) {
+    lines.push(`**Total**: ${total} deals`, "");
+  }
+
+  for (const deal of deals) {
+    lines.push(`- **${deal.name}**`);
+    lines.push(`  ID: ${deal.id}`);
+    if (deal.deal_status_name) {
+      lines.push(`  Stage: ${deal.deal_status_name}`);
+    }
+    if (deal.company_name) {
+      lines.push(`  Company: ${deal.company_name}`);
+    }
+    if (deal.responsible_name) {
+      lines.push(`  Owner: ${deal.responsible_name}`);
+    }
+    if (deal.revenue && deal.currency) {
+      lines.push(`  Revenue: ${deal.currency} ${deal.revenue}`);
+    }
+    if (deal.probability !== null) {
+      lines.push(`  Probability: ${deal.probability}%`);
+    }
+    if (deal.end_date) {
+      lines.push(`  Close Date: ${deal.end_date}`);
+    }
+    if (deal.url) {
+      lines.push(`  [View](${deal.url})`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a single deal with full detail (financials, timeline, relationships).
+ */
+export function formatSingleDealMarkdown(
+  deal: FormattedDeal,
+  activities?: FormattedActivity[],
+): string {
+  const lines = [`# Deal: ${deal.name}`, ""];
+
+  lines.push(`**ID**: ${deal.id}`);
+  if (deal.number) lines.push(`**Number**: ${deal.number}`);
+
+  // Status & Timeline
+  lines.push("", "## Status & Timeline", "");
+  if (deal.deal_status_name) {
+    lines.push(`**Stage**: ${deal.deal_status_name}`);
+  }
+  if (deal.pipeline_name) {
+    lines.push(`**Pipeline**: ${deal.pipeline_name}`);
+  }
+  if (deal.probability !== null) {
+    lines.push(`**Probability**: ${deal.probability}%`);
+  }
+  if (deal.date) lines.push(`**Start Date**: ${deal.date}`);
+  if (deal.end_date) lines.push(`**Close Date**: ${deal.end_date}`);
+  if (deal.closed_at) lines.push(`**Closed At**: ${deal.closed_at}`);
+  if (deal.last_activity_at) {
+    lines.push(`**Last Activity**: ${deal.last_activity_at}`);
+  }
+
+  // Financials
+  lines.push("", "## Financials", "");
+  if (deal.revenue && deal.currency) {
+    lines.push(`**Revenue**: ${deal.currency} ${deal.revenue}`);
+  }
+  if (deal.cost && deal.currency) {
+    lines.push(`**Cost**: ${deal.currency} ${deal.cost}`);
+  }
+  if (deal.profit && deal.currency) {
+    lines.push(`**Profit**: ${deal.currency} ${deal.profit}`);
+  }
+  if (deal.profit_margin) {
+    lines.push(`**Margin**: ${deal.profit_margin}%`);
+  }
+  if (deal.purchase_order_number) {
+    lines.push(`**PO Number**: ${deal.purchase_order_number}`);
+  }
+
+  // Relationships
+  lines.push("", "## Relationships", "");
+  if (deal.company_name) {
+    lines.push(
+      `**Company**: ${deal.company_name} (ID: ${deal.company_id})`,
+    );
+  } else if (deal.company_id) {
+    lines.push(`**Company ID**: ${deal.company_id}`);
+  }
+  if (deal.responsible_name) {
+    lines.push(
+      `**Owner**: ${deal.responsible_name} (ID: ${deal.responsible_id})`,
+    );
+  } else if (deal.responsible_id) {
+    lines.push(`**Owner ID**: ${deal.responsible_id}`);
+  }
+  if (deal.project_name) {
+    lines.push(
+      `**Project**: ${deal.project_name} (ID: ${deal.project_id})`,
+    );
+  } else if (deal.project_id) {
+    lines.push(`**Project ID**: ${deal.project_id}`);
+  }
+
+  const createdDate = new Date(deal.created_at).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  lines.push(`**Created**: ${createdDate}`);
+
+  // Recent activity
+  if (activities && activities.length > 0) {
+    lines.push("", "## Recent Activity", "");
+    for (const activity of activities) {
+      lines.push(formatActivityMarkdown(activity));
+    }
+  }
+
+  if (deal.url) {
+    lines.push("", `[View in Productive](${deal.url})`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a pipeline summary grouped by stage.
+ */
+export function formatPipelineSummaryMarkdown(summary: PipelineSummary): string {
+  const lines = ["# Pipeline Summary", ""];
+
+  lines.push(`**Total Deals**: ${summary.total_deals}`);
+  lines.push(`**Total Revenue**: ${summary.total_revenue.toLocaleString()}`);
+  lines.push(
+    `**Weighted Revenue**: ${summary.weighted_revenue.toLocaleString()}`,
+  );
+  lines.push("");
+
+  for (const stage of summary.stages) {
+    lines.push(`## ${stage.stage_name}`);
+    lines.push(
+      `${stage.deal_count} deal${stage.deal_count !== 1 ? "s" : ""} · Revenue: ${stage.total_revenue.toLocaleString()}`,
+    );
+    lines.push("");
+
+    for (const deal of stage.deals) {
+      const prob =
+        deal.probability !== null ? ` (${deal.probability}%)` : "";
+      const rev = deal.revenue ? ` — ${deal.revenue}` : "";
+      const co = deal.company ? ` · ${deal.company}` : "";
+      lines.push(`- **${deal.name}**${prob}${rev}${co}`);
+      lines.push(`  ID: ${deal.id}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a single activity entry.
+ */
+export function formatActivityMarkdown(activity: FormattedActivity): string {
+  const date = new Date(activity.created_at).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const lines = [`**${activity.event}** — ${date}`];
+
+  if (activity.creator_name) {
+    lines.push(`  By: ${activity.creator_name}`);
+  }
+  if (activity.changeset_summary) {
+    lines.push(`  ${activity.changeset_summary}`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a list of activities as markdown.
+ */
+export function formatActivityListMarkdown(
+  activities: FormattedActivity[],
+  total?: number,
+): string {
+  if (activities.length === 0) {
+    return "No activities found for this deal.";
+  }
+
+  const lines = ["# Deal Activity Feed", ""];
+
+  if (total !== undefined) {
+    lines.push(`**Total**: ${total} activities`, "");
+  }
+
+  for (const activity of activities) {
+    lines.push(formatActivityMarkdown(activity));
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format an activity from a raw API response.
+ */
+export function formatActivity(
+  activity: Activity,
+  includedData?: unknown[],
+): FormattedActivity {
+  const attrs = activity.attributes as ActivityAttributes;
+
+  let creatorName: string | null = null;
+
+  type IncludedItem = {
+    type: string;
+    id: string;
+    attributes?: Record<string, unknown>;
+  };
+
+  if (
+    activity.relationships?.creator?.data &&
+    "id" in activity.relationships.creator.data
+  ) {
+    const creatorId = activity.relationships.creator.data.id;
+    const person = (includedData ?? []).find(
+      (item): item is IncludedItem =>
+        typeof item === "object" &&
+        item !== null &&
+        "type" in item &&
+        (item as IncludedItem).type === "people" &&
+        "id" in item &&
+        (item as IncludedItem).id === creatorId,
+    );
+    if (person?.attributes) {
+      const first = (person.attributes.first_name as string | undefined) ?? "";
+      const last = (person.attributes.last_name as string | undefined) ?? "";
+      creatorName = `${first} ${last}`.trim() || null;
+    }
+  }
+
+  // Summarise changeset into a readable string
+  let changesetSummary: string | null = null;
+  if (attrs.changeset && attrs.changeset.length > 0) {
+    const parts = attrs.changeset
+      .map((change) => {
+        const field = Object.keys(change)[0];
+        const value = change[field];
+        if (Array.isArray(value) && value.length >= 2) {
+          return `${field}: "${value[0]}" → "${value[1]}"`;
+        }
+        return `${field} changed`;
+      })
+      .filter(Boolean);
+    changesetSummary = parts.join(", ") || null;
+  }
+
+  return {
+    id: activity.id ?? "",
+    event: attrs.event,
+    changeset_summary: changesetSummary,
+    item_name: attrs.item_name ?? null,
+    item_type: attrs.item_type ?? null,
+    creator_name: creatorName,
+    created_at: attrs.created_at,
+  };
 }

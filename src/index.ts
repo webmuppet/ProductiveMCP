@@ -105,6 +105,18 @@ import {
   UpdateServiceTypeSchema,
   ArchiveServiceTypeSchema,
 } from "./schemas/service.js";
+import {
+  ListDealsSchema,
+  GetDealSchema,
+  CreateDealSchema,
+  UpdateDealSchema,
+  CloseDealSchema,
+  CopyDealSchema,
+  GenerateBudgetFromDealSchema,
+  ListDealCommentsSchema,
+  CreateDealCommentSchema,
+  ListDealActivitiesSchema,
+} from "./schemas/deal.js";
 
 // Import tool implementations
 import {
@@ -184,6 +196,18 @@ import {
   updateServiceType,
   archiveServiceType,
 } from "./tools/services.js";
+import {
+  listDeals,
+  getDeal,
+  createDeal,
+  updateDeal,
+  closeDeal,
+  generateBudgetFromDeal,
+  copyDeal,
+  listDealComments,
+  createDealComment,
+  listDealActivities,
+} from "./tools/deals.js";
 
 // Validate environment variables
 try {
@@ -1801,6 +1825,388 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
+    // Deal (sales pipeline) tools
+    {
+      name: "productive_list_deals",
+      description:
+        "List deals in the sales pipeline with optional pipeline summary. Use summary=true for a pipeline overview grouped by stage with revenue totals (answers 'how's my pipeline looking?'). Use summary=false for a filtered flat list. Filter by company, pipeline, stage (open/won/lost), or responsible person. Deals are sales opportunities — for project budgets, use productive_list_budgets instead.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          company_id: {
+            type: "string",
+            description: "Filter by company ID",
+          },
+          responsible_id: {
+            type: "string",
+            description: "Filter by responsible person ID",
+          },
+          pipeline_id: {
+            type: "string",
+            description: "Filter by sales pipeline ID",
+          },
+          stage_status: {
+            type: "string",
+            enum: ["open", "won", "lost"],
+            description: "Filter by stage status",
+          },
+          deal_status_id: {
+            type: "string",
+            description: "Filter by specific pipeline stage ID",
+          },
+          query: {
+            type: "string",
+            description: "Full-text search query",
+          },
+          summary: {
+            type: "boolean",
+            description:
+              "When true, returns a pipeline overview grouped by stage with revenue totals. When false (default), returns a paginated flat list.",
+            default: false,
+          },
+          limit: {
+            type: "number",
+            description: "Number of results per page (default: 30, max: 200)",
+            default: 30,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          sort_by: {
+            type: "string",
+            enum: [
+              "name",
+              "date",
+              "end_date",
+              "revenue",
+              "probability",
+              "company.name",
+              "responsible.name",
+              "deal_status",
+              "created_at",
+              "last_activity_at",
+            ],
+            description: "Field to sort by",
+          },
+          sort_order: {
+            type: "string",
+            enum: ["asc", "desc"],
+            description: "Sort order (default: desc)",
+            default: "desc",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+    {
+      name: "productive_get_deal",
+      description:
+        "Get detailed information about a specific deal including financial summary (revenue, cost, profit, margin), pipeline stage, timeline, associated company, and the 5 most recent activities. Use this when asked 'show me deal X' or 'what's the latest on deal X'.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id"],
+      },
+    },
+    {
+      name: "productive_create_deal",
+      description:
+        "Create a new deal in the sales pipeline. Requires name, start date, and deal_status_id. Optionally assign to a company, pipeline, and responsible person. Note: deal value/revenue is not set directly — it is computed from services. After creating a deal, use productive_create_service to add line items that define the deal value.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Deal name (required)",
+          },
+          date: {
+            type: "string",
+            description: "Start date in ISO 8601 format YYYY-MM-DD (required)",
+          },
+          deal_status_id: {
+            type: "string",
+            description:
+              "Pipeline stage ID (required). Use productive_list_deals or pipeline settings to find valid stage IDs.",
+          },
+          end_date: {
+            type: ["string", "null"],
+            description:
+              "Expected close date in ISO 8601 format YYYY-MM-DD, or null",
+          },
+          probability: {
+            type: "number",
+            description: "Win probability as integer 0-100",
+          },
+          currency: {
+            type: "string",
+            description: "ISO 4217 currency code (e.g. USD, EUR)",
+          },
+          purchase_order_number: {
+            type: "string",
+            description: "Purchase order number",
+          },
+          company_id: {
+            type: "string",
+            description: "Client company ID",
+          },
+          responsible_id: {
+            type: "string",
+            description: "Responsible person ID (deal owner)",
+          },
+          pipeline_id: {
+            type: "string",
+            description: "Sales pipeline ID",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["name", "date", "deal_status_id"],
+      },
+    },
+    {
+      name: "productive_update_deal",
+      description:
+        "Update a deal's attributes or move it to a different pipeline stage by changing deal_status_id. For adding notes or logging activity on a deal, use productive_create_deal_comment instead.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID (required)",
+          },
+          name: {
+            type: "string",
+            description: "New deal name",
+          },
+          date: {
+            type: "string",
+            description: "New start date in ISO 8601 format YYYY-MM-DD",
+          },
+          end_date: {
+            type: ["string", "null"],
+            description:
+              "New expected close date in ISO 8601 format YYYY-MM-DD, or null to clear",
+          },
+          probability: {
+            type: "number",
+            description: "New win probability as integer 0-100",
+          },
+          purchase_order_number: {
+            type: ["string", "null"],
+            description: "New purchase order number, or null to clear",
+          },
+          deal_status_id: {
+            type: "string",
+            description:
+              "New pipeline stage ID — use this to move the deal through the pipeline",
+          },
+          company_id: {
+            type: "string",
+            description: "New company ID",
+          },
+          responsible_id: {
+            type: "string",
+            description: "New responsible person ID",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id"],
+      },
+    },
+    {
+      name: "productive_close_deal",
+      description:
+        "Close a deal as won or lost. Requires the specific deal_status_id for the Won or Lost stage. When closing as lost, provide a lost_reason_id. This does NOT auto-generate a budget — use productive_generate_budget_from_deal as a separate step after closing as won.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID (required)",
+          },
+          outcome: {
+            type: "string",
+            enum: ["won", "lost"],
+            description: "Deal outcome: won or lost (required)",
+          },
+          deal_status_id: {
+            type: "string",
+            description:
+              "The Won or Lost pipeline stage ID (required). Must match the outcome.",
+          },
+          lost_reason_id: {
+            type: "string",
+            description:
+              "Lost reason ID (recommended when outcome is lost). Use productive_list_deals to find available lost reason IDs.",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id", "outcome", "deal_status_id"],
+      },
+    },
+    {
+      name: "productive_generate_budget_from_deal",
+      description:
+        "Generate a budget from a won deal. This creates a new budget linked to the deal, enabling invoicing and project financial tracking. The deal should be in a 'Won' status before generating a budget.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id"],
+      },
+    },
+    {
+      name: "productive_copy_deal",
+      description:
+        "Duplicate an existing deal. Creates a copy with the same attributes and relationships.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID to copy (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id"],
+      },
+    },
+    {
+      name: "productive_list_deal_comments",
+      description:
+        "List comments on a deal, sorted by most recent first. Comments include author info and timestamps.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID (required)",
+          },
+          limit: {
+            type: "number",
+            description: "Number of results per page (default: 30, max: 200)",
+            default: 30,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id"],
+      },
+    },
+    {
+      name: "productive_create_deal_comment",
+      description:
+        "Add a comment/note to a deal. Use this to log call notes, meeting outcomes, status updates, or any activity on a deal. Accepts Markdown which is converted to HTML. Example: 'Had call with CEO, agreed to move forward with proposal.'",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID (required)",
+          },
+          body: {
+            type: "string",
+            description:
+              "Comment body in Markdown format (required). Converted to HTML automatically.",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id", "body"],
+      },
+    },
+    {
+      name: "productive_list_deal_activities",
+      description:
+        "List the activity feed for a deal — shows all changes, comments, and events in chronological order. Use this for a comprehensive audit trail of everything that happened on a deal.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: {
+            type: "string",
+            description: "Deal ID (required)",
+          },
+          limit: {
+            type: "number",
+            description: "Number of results per page (default: 30, max: 200)",
+            default: 30,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_id"],
+      },
+    },
+
     // Revenue Distribution tools
     {
       name: "productive_list_revenue_distributions",
@@ -2736,6 +3142,77 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "productive_audit_project_budgets": {
         const validated = AuditProjectBudgetsSchema.parse(args);
         const result = await auditProjectBudgets(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      // Deal (sales pipeline) tools
+      case "productive_list_deals": {
+        const validated = ListDealsSchema.parse(args);
+        const result = await listDeals(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_get_deal": {
+        const validated = GetDealSchema.parse(args);
+        const result = await getDeal(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_create_deal": {
+        const validated = CreateDealSchema.parse(args);
+        const result = await createDeal(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_update_deal": {
+        const validated = UpdateDealSchema.parse(args);
+        const result = await updateDeal(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_close_deal": {
+        const validated = CloseDealSchema.parse(args);
+        const result = await closeDeal(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_generate_budget_from_deal": {
+        const validated = GenerateBudgetFromDealSchema.parse(args);
+        const result = await generateBudgetFromDeal(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_copy_deal": {
+        const validated = CopyDealSchema.parse(args);
+        const result = await copyDeal(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_list_deal_comments": {
+        const validated = ListDealCommentsSchema.parse(args);
+        const result = await listDealComments(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_create_deal_comment": {
+        const validated = CreateDealCommentSchema.parse(args);
+        const result = await createDealComment(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_list_deal_activities": {
+        const validated = ListDealActivitiesSchema.parse(args);
+        const result = await listDealActivities(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
         return { content: [{ type: "text", text: result }] };
       }

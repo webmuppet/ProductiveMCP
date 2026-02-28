@@ -900,3 +900,156 @@ export interface FormattedServiceType {
   description: string | null;
   archived: boolean;
 }
+
+// ─── Deal types ───────────────────────────────────────────────────────────────
+// Deals and budgets share the /deals endpoint; filter[type]=1 for deals.
+
+export interface DealAttributes {
+  name: string;
+  budget: boolean;
+  date: string | null;
+  end_date: string | null;
+  probability: number | null;
+  currency: string | null;
+  revenue: string | null;
+  revenue_default: string | null;
+  cost: string | null;
+  cost_default: string | null;
+  profit: string | null;
+  profit_default: string | null;
+  profit_margin: string | null;
+  invoiced: string | null;
+  purchase_order_number: string | null;
+  deal_type_id: number;
+  number: string | null;
+  closed_at: string | null;
+  last_activity_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Deal extends JSONAPIData<DealAttributes> {
+  type: "deals";
+  id: string;
+}
+
+export interface CreateDealPayload {
+  data: {
+    type: "deals";
+    attributes: {
+      name: string;
+      date: string;
+      budget: false;
+      deal_type_id: number;
+      probability?: number;
+      currency?: string;
+      end_date?: string | null;
+      purchase_order_number?: string | null;
+    };
+    relationships?: {
+      deal_status?: { data: { type: "deal_statuses"; id: string } };
+      company?: { data: { type: "companies"; id: string } };
+      responsible?: { data: { type: "people"; id: string } };
+      pipeline?: { data: { type: "pipelines"; id: string } };
+    };
+  };
+}
+
+export interface UpdateDealPayload {
+  data: {
+    type: "deals";
+    id: string;
+    attributes?: {
+      name?: string;
+      date?: string;
+      end_date?: string | null;
+      probability?: number;
+      purchase_order_number?: string | null;
+    };
+    relationships?: {
+      deal_status?: { data: { type: "deal_statuses"; id: string } };
+      company?: { data: { type: "companies"; id: string } };
+      responsible?: { data: { type: "people"; id: string } };
+      lost_reason?: { data: { type: "lost_reasons"; id: string } };
+    };
+  };
+}
+
+export interface FormattedDeal {
+  id: string;
+  name: string;
+  number: string | null;
+  date: string | null;
+  end_date: string | null;
+  probability: number | null;
+  currency: string | null;
+  revenue: string | null;
+  cost: string | null;
+  profit: string | null;
+  profit_margin: string | null;
+  purchase_order_number: string | null;
+  deal_status_id: string | null;
+  deal_status_name: string | null;
+  pipeline_id: string | null;
+  pipeline_name: string | null;
+  company_id: string | null;
+  company_name: string | null;
+  responsible_id: string | null;
+  responsible_name: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  closed_at: string | null;
+  last_activity_at: string | null;
+  created_at: string;
+  url: string | null;
+}
+
+// ─── Activity types ───────────────────────────────────────────────────────────
+
+export interface ActivityAttributes {
+  event: string;
+  changeset: Array<Record<string, unknown>> | null;
+  item_id: string | null;
+  item_type: string | null;
+  item_name: string | null;
+  created_at: string;
+  deal_id: string | null;
+  made_by_automation: boolean;
+}
+
+export interface Activity extends JSONAPIData<ActivityAttributes> {
+  type: "activities";
+  id: string;
+}
+
+export interface FormattedActivity {
+  id: string;
+  event: string;
+  changeset_summary: string | null;
+  item_name: string | null;
+  item_type: string | null;
+  creator_name: string | null;
+  created_at: string;
+}
+
+// ─── Pipeline summary types ───────────────────────────────────────────────────
+
+export interface PipelineStageSummary {
+  stage_name: string;
+  deal_count: number;
+  total_revenue: number;
+  deals: Array<{
+    id: string;
+    name: string;
+    company: string | null;
+    revenue: string | null;
+    probability: number | null;
+  }>;
+}
+
+export interface PipelineSummary {
+  total_deals: number;
+  total_revenue: number;
+  weighted_revenue: number;
+  stages: PipelineStageSummary[];
+}
