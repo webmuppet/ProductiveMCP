@@ -3,6 +3,14 @@
  */
 
 import { marked, Token, Tokens } from "marked";
+
+// Configure marked once at module initialisation (it is a global singleton).
+// Setting options inside markdownToHtml on every call would repeatedly mutate
+// shared state, which is a footgun when options ever diverge between callers.
+marked.setOptions({
+  gfm: true,    // GitHub Flavored Markdown
+  breaks: true, // Convert \n to <br>
+});
 import {
   CHARACTER_LIMIT,
   CUSTOM_FIELD_IDS,
@@ -58,12 +66,6 @@ export function markdownToHtml(markdown: string): string {
   if (!markdown || markdown.trim() === "") {
     return markdown;
   }
-
-  // Configure marked for safe, clean HTML output
-  marked.setOptions({
-    gfm: true, // GitHub Flavored Markdown
-    breaks: true, // Convert \n to <br>
-  });
 
   // Convert markdown to HTML and remove wrapping <p> tags if it's a single paragraph
   const html = marked.parse(markdown, { async: false }) as string;
