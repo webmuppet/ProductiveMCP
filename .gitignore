@@ -4,3 +4,4 @@ dist/
 productive.config.json
 *.log
 .DS_Store
+briefs/
