@@ -579,10 +579,15 @@ export function formatTask(
 
 /**
  * Format task as markdown
+ * @param task - The formatted task to render
+ * @param heading - H1 heading for the output block (defaults to "Task")
  */
-export function formatTaskMarkdown(task: FormattedTask): string {
+export function formatTaskMarkdown(
+  task: FormattedTask,
+  heading = "Task",
+): string {
   const lines = [
-    "# Task Created Successfully",
+    `# ${heading}`,
     "",
     `**ID**: ${task.number ? `#${task.number}` : task.id}`,
     `**Title**: ${task.title}`,

@@ -249,7 +249,7 @@ export async function createTask(
   }
 
   const result = formatResponse(task, args.response_format, () =>
-    formatTaskMarkdown(task),
+    formatTaskMarkdown(task, "Task Created Successfully"),
   );
 
   return truncateResponse(result, args.response_format);
@@ -327,7 +327,7 @@ export async function getTask(
   );
 
   const result = formatResponse(task, args.response_format, () =>
-    formatTaskMarkdown(task),
+    formatTaskMarkdown(task, "Task"),
   );
 
   return truncateResponse(result, args.response_format);
@@ -470,7 +470,7 @@ export async function updateTask(
   );
 
   const result = formatResponse(task, args.response_format, () =>
-    formatTaskMarkdown(task),
+    formatTaskMarkdown(task, "Task Updated Successfully"),
   );
 
   return truncateResponse(result, args.response_format);
