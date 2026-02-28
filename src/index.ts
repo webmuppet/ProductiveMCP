@@ -196,10 +196,13 @@ try {
 }
 
 // Initialize API client
-const client = new ProductiveClient(
+let client = new ProductiveClient(
   process.env.PRODUCTIVE_API_TOKEN!,
   process.env.PRODUCTIVE_ORG_ID!,
 );
+
+// Track current environment (production is always the default at startup)
+let currentEnvironment: "production" | "sandbox" = "production";
 
 // Initialize MCP server
 const server = new Server(
@@ -2321,6 +2324,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["service_type_id"],
       },
     },
+    {
+      name: "productive_switch_environment",
+      description:
+        "Switch between Production and Sandbox Productive.io environments. All subsequent tool calls will use the selected environment's API token, org ID, and base URL. Defaults to production on server startup.\n\nRequires sandbox environment variables to be configured:\n- PRODUCTIVE_SANDBOX_API_TOKEN\n- PRODUCTIVE_SANDBOX_ORG_ID\n- PRODUCTIVE_SANDBOX_BASE_URL",
+      inputSchema: {
+        type: "object",
+        properties: {
+          environment: {
+            type: "string",
+            enum: ["production", "sandbox"],
+            description: "The target environment to switch to",
+          },
+        },
+        required: ["environment"],
+      },
+    },
+    {
+      name: "productive_get_environment",
+      description:
+        "Returns the currently active Productive.io environment (production or sandbox).",
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
   ],
 }));
 
@@ -2825,6 +2853,63 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const result = await archiveServiceType(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
         return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_switch_environment": {
+        const env = (args as { environment: "production" | "sandbox" })
+          .environment;
+
+        if (env === "sandbox") {
+          const sandboxToken = process.env.PRODUCTIVE_SANDBOX_API_TOKEN;
+          const sandboxOrgId = process.env.PRODUCTIVE_SANDBOX_ORG_ID;
+          const sandboxBaseURL = process.env.PRODUCTIVE_SANDBOX_BASE_URL;
+
+          if (!sandboxToken || !sandboxOrgId || !sandboxBaseURL) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: "Cannot switch to sandbox: missing environment variables. Required:\n- PRODUCTIVE_SANDBOX_API_TOKEN\n- PRODUCTIVE_SANDBOX_ORG_ID\n- PRODUCTIVE_SANDBOX_BASE_URL",
+                },
+              ],
+            };
+          }
+
+          client = new ProductiveClient(
+            sandboxToken,
+            sandboxOrgId,
+            sandboxBaseURL,
+          );
+          currentEnvironment = "sandbox";
+        } else {
+          client = new ProductiveClient(
+            process.env.PRODUCTIVE_API_TOKEN!,
+            process.env.PRODUCTIVE_ORG_ID!,
+          );
+          currentEnvironment = "production";
+        }
+
+        safeLog("[MCP Tool Success]", { tool: name, environment: currentEnvironment });
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Switched to ${currentEnvironment} environment.`,
+            },
+          ],
+        };
+      }
+
+      case "productive_get_environment": {
+        safeLog("[MCP Tool Success]", { tool: name });
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Current environment: ${currentEnvironment}`,
+            },
+          ],
+        };
       }
 
       default:

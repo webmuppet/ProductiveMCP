@@ -13,12 +13,12 @@ export class ProductiveClient {
   private readonly orgId: string;
   private readonly rateLimiter: RateLimiter;
 
-  constructor(apiToken: string, orgId: string) {
+  constructor(apiToken: string, orgId: string, baseURL?: string) {
     this.orgId = orgId;
     this.rateLimiter = new RateLimiter();
 
     this.axios = axios.create({
-      baseURL: API_URL,
+      baseURL: baseURL || API_URL,
       headers: {
         "X-Auth-Token": apiToken,
         "X-Organization-Id": orgId,
