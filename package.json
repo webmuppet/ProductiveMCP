@@ -9,7 +9,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "setup": "node setup.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit tests/schemas",
+    "test:integration": "vitest run tests/integration",
+    "test:coverage": "vitest run --coverage"
   },
   "engines": {
     "node": ">=18"
@@ -27,7 +32,9 @@
     "@types/form-data": "^2.2.1",
     "@types/marked": "^5.0.2",
     "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.18"
   }
 }
