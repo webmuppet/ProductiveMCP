@@ -119,8 +119,10 @@ export async function createTasksBatch(
         };
       }
 
-      // Create the task
-      const response = await client.post<JSONAPIResponse>("/tasks", payload);
+      // Create the task (include related resources so formatTask can resolve names)
+      const response = await client.post<JSONAPIResponse>("/tasks", payload, {
+        include: "project,task_list,assignee,workflow_status,attachments",
+      });
       const taskData = Array.isArray(response.data)
         ? response.data[0]
         : response.data;
