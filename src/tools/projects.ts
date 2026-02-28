@@ -48,6 +48,7 @@ import {
   MoveTaskListSchema,
   CopyTaskListSchema,
 } from "../schemas/project.js";
+import { ProductiveAPIError } from "../utils/errors.js";
 
 /**
  * List projects
@@ -401,7 +402,7 @@ export async function deleteTaskList(
     await client.delete(`/task_lists/${args.task_list_id}`);
     return `Task list ${args.task_list_id} deleted successfully.`;
   } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
+    if (error instanceof ProductiveAPIError && error.statusCode === 404) {
       throw new Error(
         "Delete operation not supported for task lists. Use archive_task_list instead to deactivate the task list.",
       );
