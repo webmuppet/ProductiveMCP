@@ -29,6 +29,8 @@ import {
 import type { ProductiveClient } from '../../src/client.js';
 
 const SANDBOX_DEAL_STATUS_ID = process.env.PRODUCTIVE_SANDBOX_DEAL_STATUS_ID ?? '';
+const SANDBOX_PERSON_ID = process.env.PRODUCTIVE_SANDBOX_PERSON_ID ?? '';
+const SANDBOX_COMPANY_ID = process.env.PRODUCTIVE_SANDBOX_COMPANY_ID ?? '';
 
 /**
  * Whether we have both the base sandbox vars AND a deal_status_id.
@@ -68,6 +70,9 @@ describe.skipIf(!HAS_DEAL_SANDBOX)('Deals Integration (sandbox)', () => {
       date: '2026-03-01',
       deal_status_id: SANDBOX_DEAL_STATUS_ID,
       probability: 40,
+      currency: 'USD',
+      ...(SANDBOX_PERSON_ID && { responsible_id: SANDBOX_PERSON_ID }),
+      ...(SANDBOX_COMPANY_ID && { company_id: SANDBOX_COMPANY_ID }),
       response_format: 'json',
     });
 

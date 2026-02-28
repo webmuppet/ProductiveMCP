@@ -45,7 +45,6 @@ import {
   ListDealCommentsSchema,
   CreateDealCommentSchema,
   ListDealActivitiesSchema,
-  STAGE_STATUS_VALUES,
 } from "../schemas/deal.js";
 
 // ─── Comment formatting (mirrors comments.ts, local to deals context) ─────────
@@ -191,7 +190,6 @@ export async function listDeals(
 
     const baseParams: Record<string, unknown> = {
       "filter[type]": 1,
-      "filter[stage_status]": STAGE_STATUS_VALUES.open, // summary = open pipeline only
       "page[size]": 50,
       include: "company,responsible,deal_status,pipeline",
     };
@@ -214,6 +212,9 @@ export async function listDeals(
 
       currentPage++;
     } while (currentPage <= totalPages);
+
+    // Filter to open deals only (API does not support filter[stage_status])
+    allDeals = allDeals.filter((d) => d.closed_at === null);
 
     // Group by stage
     const stageMap = new Map<string, PipelineStageSummary>();
@@ -281,8 +282,6 @@ export async function listDeals(
   if (args.responsible_id)
     params["filter[responsible_id]"] = args.responsible_id;
   if (args.pipeline_id) params["filter[pipeline_id]"] = args.pipeline_id;
-  if (args.stage_status)
-    params["filter[stage_status]"] = STAGE_STATUS_VALUES[args.stage_status];
   if (args.deal_status_id)
     params["filter[deal_status_id]"] = args.deal_status_id;
   if (args.query) params["filter[name]"] = args.query;
@@ -338,7 +337,6 @@ export async function getDeal(
       "filter[deal_id]": args.deal_id,
       "page[size]": 5,
       "page[number]": 1,
-      sort: "-created_at",
       include: "creator",
     });
 
@@ -645,12 +643,43 @@ export async function listDealComments(
 ): Promise<string> {
   const pageNumber = Math.floor(args.offset / args.limit) + 1;
 
-  const response = await client.get<JSONAPIResponse>("/comments", {
+  // The /comments endpoint does not support filter[deal_id].
+  // Step 1: Fetch comment-type activities to discover the comment IDs for this deal.
+  const activityResponse = await client.get<JSONAPIResponse>("/activities", {
     "filter[deal_id]": args.deal_id,
+    "filter[item_type]": "comment",
     "page[number]": pageNumber,
     "page[size]": args.limit,
+  });
+
+  const activities = Array.isArray(activityResponse.data)
+    ? activityResponse.data
+    : activityResponse.data
+      ? [activityResponse.data]
+      : [];
+
+  const commentIds: string[] = activities
+    .filter((a): a is { attributes: { item_id: number } } & typeof a => {
+      const attrs = (a as { attributes?: { item_id?: unknown } }).attributes;
+      return !!attrs?.item_id;
+    })
+    .map((a) => String(a.attributes.item_id));
+
+  const total = activityResponse.meta?.total_count;
+
+  if (commentIds.length === 0) {
+    const result = formatResponse(
+      { comments: [], total: 0, count: 0 },
+      args.response_format,
+      () => "No comments found for this deal.",
+    );
+    return truncateResponse(result, args.response_format);
+  }
+
+  // Step 2: Bulk-fetch those comments by ID (filter[id] supports comma-separated values)
+  const response = await client.get<JSONAPIResponse>("/comments", {
+    "filter[id]": commentIds.join(","),
     include: "creator",
-    sort: "-created_at",
   });
 
   const comments = (
@@ -660,8 +689,6 @@ export async function listDealComments(
     .map((comment) =>
       formatDealComment(comment as Comment, response.included),
     );
-
-  const total = response.meta?.total_count;
 
   const result = formatResponse(
     { comments, total, count: comments.length },
@@ -730,7 +757,6 @@ export async function listDealActivities(
     "filter[deal_id]": args.deal_id,
     "page[number]": pageNumber,
     "page[size]": args.limit,
-    sort: "-created_at",
     include: "creator",
   });
 

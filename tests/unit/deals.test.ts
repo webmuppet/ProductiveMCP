@@ -156,7 +156,7 @@ describe('listDeals', () => {
     expect(endpoint).toBe('/deals');
   });
 
-  it('applies stage_status filter with correct numeric API value', async () => {
+  it('does NOT send filter[stage_status] to API (not supported by Productive)', async () => {
     const client = createMockClient({ get: mockDealListResponse() });
 
     await listDeals(client, {
@@ -168,25 +168,25 @@ describe('listDeals', () => {
     });
 
     const [, params] = (client.get as ReturnType<typeof vi.fn>).mock.calls[0] as [string, Record<string, unknown>];
-    expect(params['filter[stage_status]']).toBe(1); // open = 1
+    expect(params['filter[stage_status]']).toBeUndefined();
   });
 
-  it('maps won stage_status to API value 2', async () => {
+  it('does not send filter[stage_status] for won (not supported by API)', async () => {
     const client = createMockClient({ get: mockDealListResponse() });
 
     await listDeals(client, { stage_status: 'won', summary: false, limit: 25, offset: 0, response_format: 'markdown' });
 
     const [, params] = (client.get as ReturnType<typeof vi.fn>).mock.calls[0] as [string, Record<string, unknown>];
-    expect(params['filter[stage_status]']).toBe(2); // won = 2
+    expect(params['filter[stage_status]']).toBeUndefined();
   });
 
-  it('maps lost stage_status to API value 3', async () => {
+  it('does not send filter[stage_status] for lost (not supported by API)', async () => {
     const client = createMockClient({ get: mockDealListResponse() });
 
     await listDeals(client, { stage_status: 'lost', summary: false, limit: 25, offset: 0, response_format: 'markdown' });
 
     const [, params] = (client.get as ReturnType<typeof vi.fn>).mock.calls[0] as [string, Record<string, unknown>];
-    expect(params['filter[stage_status]']).toBe(3); // lost = 3
+    expect(params['filter[stage_status]']).toBeUndefined();
   });
 
   it('applies company_id filter when provided', async () => {
@@ -259,7 +259,7 @@ describe('listDeals', () => {
 // ─── listDeals (summary mode) ─────────────────────────────────────────────────
 
 describe('listDeals (summary mode)', () => {
-  it('fetches only open deals (stage_status=1) for pipeline summary', async () => {
+  it('fetches all deals (no stage_status filter) and filters open client-side', async () => {
     const client = createMockClient({
       get: { ...mockDealListResponse(1), meta: { total_count: 1, total_pages: 1 } },
     });
@@ -267,7 +267,7 @@ describe('listDeals (summary mode)', () => {
     await listDeals(client, { summary: true, limit: 25, offset: 0, response_format: 'markdown' });
 
     const [, params] = (client.get as ReturnType<typeof vi.fn>).mock.calls[0] as [string, Record<string, unknown>];
-    expect(params['filter[stage_status]']).toBe(1); // open
+    expect(params['filter[stage_status]']).toBeUndefined(); // filter[stage_status] not supported by API
     expect(params['filter[type]']).toBe(1); // deals only
   });
 
@@ -718,8 +718,26 @@ describe('listDealComments', () => {
     ],
   };
 
-  it('calls GET /comments with filter[deal_id]', async () => {
+  // The new 2-step implementation:
+  //   Step 1: GET /activities?filter[deal_id]=X&filter[item_type]=comment  → get comment IDs
+  //   Step 2: GET /comments?filter[id]=id1,id2,...                         → fetch comments
+
+  const mockActivityLookup = {
+    data: [
+      {
+        type: 'activities',
+        id: 'act-1',
+        attributes: { item_id: 200, item_type: 'comment' },
+      },
+    ],
+    meta: { total_count: 1 },
+  };
+
+  it('calls GET /activities first to discover comment IDs for the deal', async () => {
     const client = createMockClient({ get: mockCommentResponse });
+    (client.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(mockActivityLookup)
+      .mockResolvedValueOnce(mockCommentResponse);
 
     await listDealComments(client, { deal_id: '10', limit: 25, offset: 0, response_format: 'markdown' });
 
@@ -727,24 +745,32 @@ describe('listDealComments', () => {
       string,
       Record<string, unknown>,
     ];
-    expect(endpoint).toBe('/comments');
+    expect(endpoint).toBe('/activities');
     expect(params['filter[deal_id]']).toBe('10');
+    expect(params['filter[item_type]']).toBe('comment');
   });
 
-  it('does NOT use filter[task_id] — deal comments use deal_id not task_id', async () => {
+  it('calls GET /comments with filter[id] using IDs from activities', async () => {
     const client = createMockClient({ get: mockCommentResponse });
+    (client.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(mockActivityLookup)
+      .mockResolvedValueOnce(mockCommentResponse);
 
     await listDealComments(client, { deal_id: '10', limit: 25, offset: 0, response_format: 'markdown' });
 
-    const [, params] = (client.get as ReturnType<typeof vi.fn>).mock.calls[0] as [
+    const [endpoint, params] = (client.get as ReturnType<typeof vi.fn>).mock.calls[1] as [
       string,
       Record<string, unknown>,
     ];
-    expect(params['filter[task_id]']).toBeUndefined();
+    expect(endpoint).toBe('/comments');
+    expect(params['filter[id]']).toBe('200'); // item_id from the activity
   });
 
   it('returns markdown string by default', async () => {
     const client = createMockClient({ get: mockCommentResponse });
+    (client.get as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(mockActivityLookup)
+      .mockResolvedValueOnce(mockCommentResponse);
 
     const result = await listDealComments(client, { deal_id: '10', limit: 25, offset: 0, response_format: 'markdown' });
 
@@ -829,7 +855,7 @@ describe('listDealActivities', () => {
     expect(params['filter[deal_id]']).toBe('10');
   });
 
-  it('sorts by -created_at (most recent first)', async () => {
+  it('does NOT send sort param (sort by -created_at not supported by API)', async () => {
     const client = createMockClient({ get: mockActivityResponse() });
 
     await listDealActivities(client, { deal_id: '10', limit: 25, offset: 0, response_format: 'markdown' });
@@ -838,7 +864,7 @@ describe('listDealActivities', () => {
       string,
       Record<string, unknown>,
     ];
-    expect(params['sort']).toBe('-created_at');
+    expect(params['sort']).toBeUndefined();
   });
 
   it('returns markdown string by default', async () => {
