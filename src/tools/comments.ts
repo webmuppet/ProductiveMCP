@@ -110,7 +110,8 @@ function formatCommentsMarkdown(
   for (const comment of comments) {
     const pinnedBadge = comment.pinned ? " 📌" : "";
     const author =
-      comment.author_name || `User ${comment.author_id}` || "Unknown";
+      comment.author_name ||
+      (comment.author_id ? `User ${comment.author_id}` : "Unknown");
     const date = new Date(comment.created_at).toLocaleString("en-GB", {
       day: "2-digit",
       month: "short",
@@ -172,7 +173,8 @@ export async function listComments(
 function formatCommentMarkdown(comment: FormattedComment): string {
   const pinnedBadge = comment.pinned ? " 📌" : "";
   const author =
-    comment.author_name || `User ${comment.author_id}` || "Unknown";
+    comment.author_name ||
+    (comment.author_id ? `User ${comment.author_id}` : "Unknown");
   const date = new Date(comment.created_at).toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
