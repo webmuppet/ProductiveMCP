@@ -63,6 +63,21 @@ import type {
   FormattedActivity,
   PipelineStageSummary,
   PipelineSummary,
+  DealStatus,
+  DealStatusAttributes,
+  FormattedDealStatus,
+  Pipeline,
+  PipelineAttributes,
+  FormattedPipeline,
+  Company,
+  CompanyAttributes,
+  FormattedCompany,
+  LostReason,
+  LostReasonAttributes,
+  FormattedLostReason,
+  Contract,
+  ContractAttributes,
+  FormattedContract,
 } from "../types.js";
 
 /**
@@ -2340,4 +2355,402 @@ export function formatActivity(
     creator_name: creatorName,
     created_at: attrs.created_at,
   };
+}
+
+// ─── Deal Status formatters ───────────────────────────────────────────────────
+
+const STAGE_TYPE_MAP: Record<number, "open" | "won" | "lost"> = {
+  1: "open",
+  2: "won",
+  3: "lost",
+};
+
+export function formatDealStatus(
+  status: DealStatus,
+  included?: unknown[],
+): FormattedDealStatus {
+  const attrs = status.attributes as DealStatusAttributes;
+
+  let pipelineId: string | null = null;
+  let pipelineName: string | null = null;
+
+  if (
+    status.relationships?.pipeline?.data &&
+    "id" in status.relationships.pipeline.data
+  ) {
+    pipelineId = status.relationships.pipeline.data.id;
+
+    if (included) {
+      const pipeline = included.find(
+        (
+          item,
+        ): item is {
+          type: string;
+          id: string;
+          attributes?: { name?: string };
+        } =>
+          typeof item === "object" &&
+          item !== null &&
+          "type" in item &&
+          (item as { type: unknown }).type === "pipelines" &&
+          "id" in item &&
+          (item as { id: unknown }).id === pipelineId,
+      );
+      pipelineName = pipeline?.attributes?.name ?? null;
+    }
+  }
+
+  return {
+    id: status.id ?? "",
+    name: attrs.name,
+    stage_type: STAGE_TYPE_MAP[attrs.status_id] ?? "open",
+    position: attrs.position,
+    probability: attrs.probability,
+    probability_enabled: attrs.probability_enabled,
+    lost_reason_enabled: attrs.lost_reason_enabled,
+    pipeline_id: pipelineId,
+    pipeline_name: pipelineName,
+    archived_at: attrs.archived_at,
+  };
+}
+
+export function formatDealStatusListMarkdown(
+  statuses: FormattedDealStatus[],
+  total?: number,
+): string {
+  if (statuses.length === 0) return "No deal statuses found.";
+
+  const lines = ["# Deal Statuses", ""];
+  if (total !== undefined) lines.push(`**Total**: ${total}`, "");
+
+  // Group by pipeline
+  const byPipeline = new Map<string, FormattedDealStatus[]>();
+  for (const s of statuses) {
+    const key = s.pipeline_name ?? "No Pipeline";
+    if (!byPipeline.has(key)) byPipeline.set(key, []);
+    byPipeline.get(key)!.push(s);
+  }
+
+  for (const [pipelineName, stages] of byPipeline) {
+    lines.push(`## ${pipelineName}`, "");
+    for (const s of stages) {
+      const typeEmoji =
+        s.stage_type === "won" ? "🏆" : s.stage_type === "lost" ? "❌" : "🔵";
+      const prob =
+        s.probability !== null ? ` | Probability: ${s.probability}%` : "";
+      const archived = s.archived_at ? " *(archived)*" : "";
+      lines.push(
+        `- **${s.name}**${archived} — ID: \`${s.id}\` ${typeEmoji} \`${s.stage_type}\`${prob}`,
+      );
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+export function formatSingleDealStatusMarkdown(
+  status: FormattedDealStatus,
+): string {
+  const typeEmoji =
+    status.stage_type === "won"
+      ? "🏆"
+      : status.stage_type === "lost"
+        ? "❌"
+        : "🔵";
+
+  return [
+    `# Deal Status: ${status.name} ${typeEmoji}`,
+    "",
+    `**ID**: ${status.id}`,
+    `**Stage Type**: ${status.stage_type}`,
+    `**Pipeline**: ${status.pipeline_name ?? "—"} (ID: ${status.pipeline_id ?? "—"})`,
+    `**Position**: ${status.position ?? "—"}`,
+    `**Probability**: ${status.probability !== null ? `${status.probability}%` : "—"}`,
+    `**Probability Enabled**: ${status.probability_enabled}`,
+    `**Lost Reason Enabled**: ${status.lost_reason_enabled}`,
+    `**Archived**: ${status.archived_at ? new Date(status.archived_at).toLocaleDateString() : "No"}`,
+  ].join("\n");
+}
+
+// ─── Pipeline formatters ──────────────────────────────────────────────────────
+
+const PIPELINE_TYPE_MAP: Record<number, "sales" | "production"> = {
+  1: "sales",
+  2: "production",
+};
+
+export function formatPipeline(pipeline: Pipeline): FormattedPipeline {
+  const attrs = pipeline.attributes as PipelineAttributes;
+
+  return {
+    id: pipeline.id ?? "",
+    name: attrs.name,
+    pipeline_type: PIPELINE_TYPE_MAP[attrs.pipeline_type_id] ?? "sales",
+    position: attrs.position,
+  };
+}
+
+export function formatPipelineListMarkdown(
+  pipelines: FormattedPipeline[],
+): string {
+  if (pipelines.length === 0) return "No pipelines found.";
+
+  const lines = ["# Pipelines", ""];
+
+  for (const p of pipelines) {
+    const typeLabel = p.pipeline_type === "sales" ? "Sales" : "Production";
+    lines.push(`- **${p.name}** — ID: \`${p.id}\` | Type: ${typeLabel}`);
+  }
+
+  return lines.join("\n");
+}
+
+export function formatSinglePipelineMarkdown(
+  pipeline: FormattedPipeline,
+): string {
+  const typeLabel =
+    pipeline.pipeline_type === "sales" ? "Sales" : "Production";
+
+  const lines = [
+    `# Pipeline: ${pipeline.name}`,
+    "",
+    `**ID**: ${pipeline.id}`,
+    `**Type**: ${typeLabel}`,
+    `**Position**: ${pipeline.position ?? "—"}`,
+  ];
+
+  if (pipeline.statuses && pipeline.statuses.length > 0) {
+    lines.push("", "## Stages", "");
+    for (const s of pipeline.statuses) {
+      const typeEmoji =
+        s.stage_type === "won" ? "🏆" : s.stage_type === "lost" ? "❌" : "🔵";
+      const prob =
+        s.probability !== null ? ` | Probability: ${s.probability}%` : "";
+      const archived = s.archived_at ? " *(archived)*" : "";
+      lines.push(
+        `- **${s.name}**${archived} — ID: \`${s.id}\` ${typeEmoji} \`${s.stage_type}\`${prob}`,
+      );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+// ─── Company formatters ───────────────────────────────────────────────────────
+
+export function formatCompany(company: Company): FormattedCompany {
+  const attrs = company.attributes as CompanyAttributes;
+
+  return {
+    id: company.id ?? "",
+    name: attrs.name,
+    billing_name: attrs.billing_name,
+    vat: attrs.vat,
+    default_currency: attrs.default_currency,
+    company_code: attrs.company_code,
+    domain: attrs.domain,
+    due_days: attrs.due_days,
+    tag_list: attrs.tag_list ?? [],
+    emails: (attrs.contact?.emails ?? []).map((e) => e.email),
+    phones: (attrs.contact?.phones ?? []).map((p) => p.phone),
+    websites: (attrs.contact?.websites ?? []).map((w) => w.website),
+    archived_at: attrs.archived_at,
+    last_activity_at: attrs.last_activity_at,
+    created_at: attrs.created_at,
+    url: attrs.domain ? `https://${attrs.domain}` : null,
+  };
+}
+
+export function formatCompanyListMarkdown(
+  companies: FormattedCompany[],
+  total?: number,
+): string {
+  if (companies.length === 0) return "No companies found.";
+
+  const header =
+    total !== undefined
+      ? `# Companies (${companies.length} of ${total})`
+      : `# Companies (${companies.length})`;
+
+  const lines = [header, ""];
+
+  for (const c of companies) {
+    const archived = c.archived_at ? " *(archived)*" : "";
+    const currency = c.default_currency ? ` | ${c.default_currency}` : "";
+    const domain = c.domain ? ` | ${c.domain}` : "";
+    lines.push(`- **${c.name}**${archived} — ID: \`${c.id}\`${currency}${domain}`);
+  }
+
+  return lines.join("\n");
+}
+
+export function formatSingleCompanyMarkdown(company: FormattedCompany): string {
+  const lines = [
+    `# Company: ${company.name}`,
+    "",
+    `**ID**: ${company.id}`,
+    `**Billing Name**: ${company.billing_name ?? "—"}`,
+    `**VAT**: ${company.vat ?? "—"}`,
+    `**Currency**: ${company.default_currency ?? "—"}`,
+    `**Company Code**: ${company.company_code ?? "—"}`,
+    `**Domain**: ${company.domain ?? "—"}`,
+    `**Due Days**: ${company.due_days ?? "—"}`,
+  ];
+
+  if (company.tag_list.length > 0) {
+    lines.push(`**Tags**: ${company.tag_list.join(", ")}`);
+  }
+
+  if (company.emails.length > 0) {
+    lines.push(`**Emails**: ${company.emails.join(", ")}`);
+  }
+
+  if (company.phones.length > 0) {
+    lines.push(`**Phones**: ${company.phones.join(", ")}`);
+  }
+
+  if (company.websites.length > 0) {
+    lines.push(`**Websites**: ${company.websites.join(", ")}`);
+  }
+
+  if (company.last_activity_at) {
+    lines.push(
+      `**Last Activity**: ${new Date(company.last_activity_at).toLocaleDateString()}`,
+    );
+  }
+
+  lines.push(
+    `**Created**: ${new Date(company.created_at).toLocaleDateString()}`,
+  );
+
+  if (company.archived_at) {
+    lines.push(
+      `**Archived**: ${new Date(company.archived_at).toLocaleDateString()}`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
+// ─── Lost Reason formatters ───────────────────────────────────────────────────
+
+export function formatLostReason(reason: LostReason): FormattedLostReason {
+  const attrs = reason.attributes as LostReasonAttributes;
+
+  return {
+    id: reason.id ?? "",
+    name: attrs.name,
+    archived_at: attrs.archived_at,
+  };
+}
+
+export function formatLostReasonsListMarkdown(
+  reasons: FormattedLostReason[],
+): string {
+  if (reasons.length === 0) return "No lost reasons found.";
+
+  const lines = [`# Lost Reasons (${reasons.length})`, ""];
+
+  for (const r of reasons) {
+    const archived = r.archived_at ? " *(archived)*" : "";
+    lines.push(`- **${r.name}**${archived} — ID: \`${r.id}\``);
+  }
+
+  return lines.join("\n");
+}
+
+// ─── Contract formatters ──────────────────────────────────────────────────────
+
+const CONTRACT_INTERVAL_NAMES: Record<number, string> = {
+  1: "monthly",
+  2: "bi-weekly",
+  3: "weekly",
+  4: "annual",
+  5: "semi-annual",
+  6: "quarterly",
+};
+
+export function formatContract(
+  contract: Contract,
+  included?: unknown[],
+): FormattedContract {
+  const attrs = contract.attributes as ContractAttributes;
+
+  // Resolve template from relationships if included is provided
+  let templateId: string | null = null;
+  let templateName: string | null = null;
+
+  const rels = contract.relationships as Record<string, unknown> | undefined;
+  const templateRel = rels?.template as
+    | { data?: { type: string; id: string } }
+    | undefined;
+
+  if (templateRel?.data) {
+    templateId = templateRel.data.id;
+
+    if (included) {
+      const templateRecord = (included as Array<{ type: string; id: string; attributes: Record<string, unknown> }>).find(
+        (r) => r.type === templateRel.data!.type && r.id === templateRel.data!.id,
+      );
+      if (templateRecord) {
+        templateName = (templateRecord.attributes.name as string) ?? null;
+      }
+    }
+  }
+
+  return {
+    id: contract.id ?? "",
+    interval: CONTRACT_INTERVAL_NAMES[attrs.interval_id] ?? String(attrs.interval_id),
+    next_occurrence_on: attrs.next_occurrence_on,
+    ends_on: attrs.ends_on,
+    template_id: templateId,
+    template_name: templateName,
+    copy_purchase_order_number: attrs.copy_purchase_order_number,
+    copy_expenses: attrs.copy_expenses,
+    use_rollover_hours: attrs.use_rollover_hours,
+    created_at: attrs.created_at,
+  };
+}
+
+export function formatContractListMarkdown(
+  contracts: FormattedContract[],
+  total?: number,
+): string {
+  if (contracts.length === 0) return "No contracts found.";
+
+  const header =
+    total !== undefined
+      ? `# Contracts (${contracts.length} of ${total})`
+      : `# Contracts (${contracts.length})`;
+
+  const lines = [header, ""];
+
+  for (const c of contracts) {
+    const ends = c.ends_on ? ` → ends ${c.ends_on}` : "";
+    const template = c.template_name ? ` | Template: ${c.template_name}` : "";
+    lines.push(
+      `- **${c.interval}**${ends} — ID: \`${c.id}\` | Next: ${c.next_occurrence_on}${template}`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
+export function formatSingleContractMarkdown(
+  contract: FormattedContract,
+): string {
+  return [
+    `# Contract: ${contract.interval}`,
+    "",
+    `**ID**: ${contract.id}`,
+    `**Interval**: ${contract.interval}`,
+    `**Next Occurrence**: ${contract.next_occurrence_on}`,
+    `**Ends On**: ${contract.ends_on ?? "No end date"}`,
+    `**Template**: ${contract.template_name ?? "—"} (ID: ${contract.template_id ?? "—"})`,
+    `**Copy PO Number**: ${contract.copy_purchase_order_number}`,
+    `**Copy Expenses**: ${contract.copy_expenses}`,
+    `**Use Rollover Hours**: ${contract.use_rollover_hours}`,
+    `**Created**: ${new Date(contract.created_at).toLocaleDateString()}`,
+  ].join("\n");
 }

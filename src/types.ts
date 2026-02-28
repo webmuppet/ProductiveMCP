@@ -1053,3 +1053,216 @@ export interface PipelineSummary {
   weighted_revenue: number;
   stages: PipelineStageSummary[];
 }
+
+// ─── Deal Status types ────────────────────────────────────────────────────────
+
+export interface DealStatusAttributes {
+  name: string;
+  position: number | null;
+  color_id: number | null;
+  status_id: number; // 1=open, 2=won, 3=lost
+  probability: number | null;
+  probability_enabled: boolean;
+  time_tracking_enabled: boolean;
+  expense_tracking_enabled: boolean;
+  booking_tracking_enabled: boolean;
+  lost_reason_enabled: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DealStatus extends JSONAPIData<DealStatusAttributes> {
+  type: "deal_statuses";
+  id: string;
+}
+
+export interface FormattedDealStatus {
+  id: string;
+  name: string;
+  stage_type: "open" | "won" | "lost";
+  position: number | null;
+  probability: number | null;
+  probability_enabled: boolean;
+  lost_reason_enabled: boolean;
+  pipeline_id: string | null;
+  pipeline_name: string | null;
+  archived_at: string | null;
+}
+
+// ─── Pipeline types ───────────────────────────────────────────────────────────
+
+export interface PipelineAttributes {
+  name: string;
+  position: number | null;
+  pipeline_type_id: number; // 1=sales, 2=production
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Pipeline extends JSONAPIData<PipelineAttributes> {
+  type: "pipelines";
+  id: string;
+}
+
+export interface FormattedPipeline {
+  id: string;
+  name: string;
+  pipeline_type: "sales" | "production";
+  position: number | null;
+  statuses?: FormattedDealStatus[];
+}
+
+// ─── Company types ────────────────────────────────────────────────────────────
+
+export interface CompanyAttributes {
+  name: string;
+  billing_name: string | null;
+  vat: string | null;
+  default_currency: string | null;
+  company_code: string | null;
+  domain: string | null;
+  avatar_url: string | null;
+  due_days: number | null;
+  tag_list: string[];
+  contact: {
+    emails?: Array<{ email: string }>;
+    phones?: Array<{ phone: string }>;
+    websites?: Array<{ website: string }>;
+    addresses?: Array<{ address: string }>;
+  } | null;
+  custom_fields: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+  last_activity_at: string | null;
+}
+
+export interface Company extends JSONAPIData<CompanyAttributes> {
+  type: "companies";
+  id: string;
+}
+
+export interface CreateCompanyPayload {
+  data: {
+    type: "companies";
+    attributes: {
+      name: string;
+      billing_name?: string;
+      vat?: string;
+      default_currency?: string;
+      company_code?: string;
+      domain?: string;
+      due_days?: number;
+      tag_list?: string[];
+      contact?: {
+        emails?: Array<{ email: string }>;
+        phones?: Array<{ phone: string }>;
+        websites?: Array<{ website: string }>;
+      };
+    };
+  };
+}
+
+export interface UpdateCompanyPayload {
+  data: {
+    type: "companies";
+    id: string;
+    attributes?: Partial<CreateCompanyPayload["data"]["attributes"]>;
+  };
+}
+
+export interface FormattedCompany {
+  id: string;
+  name: string;
+  billing_name: string | null;
+  vat: string | null;
+  default_currency: string | null;
+  company_code: string | null;
+  domain: string | null;
+  due_days: number | null;
+  tag_list: string[];
+  emails: string[];
+  phones: string[];
+  websites: string[];
+  archived_at: string | null;
+  last_activity_at: string | null;
+  created_at: string;
+  url: string | null;
+}
+
+// ─── Lost Reason types ────────────────────────────────────────────────────────
+
+export interface LostReasonAttributes {
+  name: string;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LostReason extends JSONAPIData<LostReasonAttributes> {
+  type: "lost_reasons";
+  id: string;
+}
+
+export interface FormattedLostReason {
+  id: string;
+  name: string;
+  archived_at: string | null;
+}
+
+// ─── Contract types ───────────────────────────────────────────────────────────
+
+export interface ContractAttributes {
+  interval_id: number; // 1=monthly, 2=bi-weekly, 3=weekly, 4=annual, 5=semi-annual, 6=quarterly
+  next_occurrence_on: string;
+  ends_on: string | null;
+  copy_purchase_order_number: boolean;
+  copy_expenses: boolean;
+  use_rollover_hours: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Contract extends JSONAPIData<ContractAttributes> {
+  type: "contracts";
+  id: string;
+}
+
+export interface CreateContractPayload {
+  data: {
+    type: "contracts";
+    attributes: {
+      interval_id: number;
+      next_occurrence_on: string;
+      ends_on?: string | null;
+      copy_purchase_order_number?: boolean;
+      copy_expenses?: boolean;
+      use_rollover_hours?: boolean;
+    };
+    relationships: {
+      template: { data: { type: "deals"; id: string } };
+    };
+  };
+}
+
+export interface UpdateContractPayload {
+  data: {
+    type: "contracts";
+    id: string;
+    attributes?: Partial<CreateContractPayload["data"]["attributes"]>;
+  };
+}
+
+export interface FormattedContract {
+  id: string;
+  interval: string; // human-readable: "monthly", "quarterly", etc.
+  next_occurrence_on: string;
+  ends_on: string | null;
+  template_id: string | null;
+  template_name: string | null;
+  copy_purchase_order_number: boolean;
+  copy_expenses: boolean;
+  use_rollover_hours: boolean;
+  created_at: string;
+}

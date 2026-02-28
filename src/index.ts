@@ -117,6 +117,29 @@ import {
   CreateDealCommentSchema,
   ListDealActivitiesSchema,
 } from "./schemas/deal.js";
+import {
+  ListDealStatusesSchema,
+  GetDealStatusSchema,
+} from "./schemas/deal-status.js";
+import {
+  ListPipelinesSchema,
+  GetPipelineSchema,
+} from "./schemas/pipeline.js";
+import {
+  ListCompaniesSchema,
+  GetCompanySchema,
+  CreateCompanySchema,
+  UpdateCompanySchema,
+  ArchiveCompanySchema,
+} from "./schemas/company.js";
+import { ListLostReasonsSchema } from "./schemas/lost-reason.js";
+import {
+  ListContractsSchema,
+  GetContractSchema,
+  CreateContractSchema,
+  UpdateContractSchema,
+  GenerateContractSchema,
+} from "./schemas/contract.js";
 
 // Import tool implementations
 import {
@@ -208,6 +231,29 @@ import {
   createDealComment,
   listDealActivities,
 } from "./tools/deals.js";
+import {
+  listDealStatuses,
+  getDealStatus,
+} from "./tools/deal-statuses.js";
+import {
+  listPipelines,
+  getPipeline,
+} from "./tools/pipelines.js";
+import {
+  listCompanies,
+  getCompany,
+  createCompany,
+  updateCompany,
+  archiveCompany,
+} from "./tools/companies.js";
+import { listLostReasons } from "./tools/lost-reasons.js";
+import {
+  listContracts,
+  getContract,
+  createContract,
+  updateContract,
+  generateContract,
+} from "./tools/contracts.js";
 
 // Validate environment variables
 try {
@@ -2207,6 +2253,530 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
+    // Deal Status (pipeline stage) tools
+    {
+      name: "productive_list_deal_statuses",
+      description:
+        "List pipeline stages (deal statuses) — the columns/stages within a sales pipeline such as 'Prospecting', 'Negotiation', 'Closed Won'. Use this to discover valid stage IDs for filtering deals or moving deals through the pipeline. Optionally filter by pipeline.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          pipeline_id: {
+            type: "string",
+            description: "Filter by pipeline ID",
+          },
+          limit: {
+            type: "number",
+            description: "Number of results per page (default: 30, max: 200)",
+            default: 30,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+    {
+      name: "productive_get_deal_status",
+      description:
+        "Get details of a specific pipeline stage (deal status) by ID — includes stage type (open/won/lost), probability settings, and which pipeline it belongs to.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_status_id: {
+            type: "string",
+            description: "Deal status (pipeline stage) ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["deal_status_id"],
+      },
+    },
+
+    // Pipeline tools
+    {
+      name: "productive_list_pipelines",
+      description:
+        "List all sales pipelines in the workspace. Pipelines are the top-level containers for deal stages. Use this to discover pipeline IDs when filtering deals or viewing pipeline configuration.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          pipeline_type: {
+            type: "string",
+            enum: ["sales", "production"],
+            description: "Filter by pipeline type (default: all types)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+    {
+      name: "productive_get_pipeline",
+      description:
+        "Get details of a specific pipeline by ID, including all its stages (deal statuses) with their types, probabilities, and positions. Use this to understand the complete structure of a sales pipeline.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          pipeline_id: {
+            type: "string",
+            description: "Pipeline ID (required)",
+          },
+          include_statuses: {
+            type: "boolean",
+            description:
+              "Whether to include pipeline stages in the response (default: true)",
+            default: true,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["pipeline_id"],
+      },
+    },
+
+    // Company tools
+    {
+      name: "productive_list_companies",
+      description:
+        "List or search companies (clients, prospects, partners). Filter by name, status, tags, or currency. Use this to find a company ID before creating a deal.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Search by company name",
+          },
+          status: {
+            type: "string",
+            enum: ["active", "archived"],
+            description: "Filter by status (default: active)",
+          },
+          tags: {
+            type: "string",
+            description: "Filter by tag names (comma-separated)",
+          },
+          default_currency: {
+            type: "string",
+            description: "Filter by default currency (e.g. USD, EUR)",
+          },
+          limit: {
+            type: "number",
+            description: "Number of results per page (default: 20, max: 100)",
+            default: 20,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          sort_by: {
+            type: "string",
+            enum: ["name", "created_at", "last_activity_at"],
+            description: "Sort field (default: name)",
+          },
+          sort_order: {
+            type: "string",
+            enum: ["asc", "desc"],
+            description: "Sort direction (default: asc)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+    {
+      name: "productive_get_company",
+      description:
+        "Get full details of a company including contact information (emails, phones, websites), tags, billing details, and custom fields.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          company_id: {
+            type: "string",
+            description: "Company ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["company_id"],
+      },
+    },
+    {
+      name: "productive_create_company",
+      description:
+        "Create a new company. Only name is required. Optionally add billing info, contact details (emails, phones, websites), tags, and currency.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Company name (required)",
+          },
+          billing_name: {
+            type: "string",
+            description: "Billing name (if different from company name)",
+          },
+          vat: {
+            type: "string",
+            description: "VAT number",
+          },
+          default_currency: {
+            type: "string",
+            description: "Default currency code (e.g. USD, EUR, GBP)",
+          },
+          company_code: {
+            type: "string",
+            description: "Internal company code",
+          },
+          domain: {
+            type: "string",
+            description: "Company website domain (e.g. example.com)",
+          },
+          due_days: {
+            type: "number",
+            description: "Payment due days",
+          },
+          tag_list: {
+            type: "array",
+            items: { type: "string" },
+            description: "Tags to assign to the company",
+          },
+          emails: {
+            type: "array",
+            items: { type: "string", format: "email" },
+            description: "Contact email addresses",
+          },
+          phones: {
+            type: "array",
+            items: { type: "string" },
+            description: "Contact phone numbers",
+          },
+          websites: {
+            type: "array",
+            items: { type: "string" },
+            description: "Contact website URLs",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["name"],
+      },
+    },
+    {
+      name: "productive_update_company",
+      description:
+        "Update a company's details — name, billing info, contact information, tags, or currency.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          company_id: {
+            type: "string",
+            description: "Company ID (required)",
+          },
+          name: {
+            type: "string",
+            description: "New company name",
+          },
+          billing_name: {
+            type: "string",
+            description: "Billing name",
+          },
+          vat: {
+            type: "string",
+            description: "VAT number",
+          },
+          default_currency: {
+            type: "string",
+            description: "Default currency code",
+          },
+          company_code: {
+            type: "string",
+            description: "Internal company code",
+          },
+          domain: {
+            type: "string",
+            description: "Company website domain",
+          },
+          due_days: {
+            type: "number",
+            description: "Payment due days",
+          },
+          tag_list: {
+            type: "array",
+            items: { type: "string" },
+            description: "Tags (replaces existing tags)",
+          },
+          emails: {
+            type: "array",
+            items: { type: "string", format: "email" },
+            description: "Contact email addresses (replaces existing)",
+          },
+          phones: {
+            type: "array",
+            items: { type: "string" },
+            description: "Contact phone numbers (replaces existing)",
+          },
+          websites: {
+            type: "array",
+            items: { type: "string" },
+            description: "Contact websites (replaces existing)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["company_id"],
+      },
+    },
+    {
+      name: "productive_archive_company",
+      description:
+        "Archive a company. This is a soft delete — the company can be restored from the Productive UI.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          company_id: {
+            type: "string",
+            description: "Company ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["company_id"],
+      },
+    },
+
+    // Lost Reason tools
+    {
+      name: "productive_list_lost_reasons",
+      description:
+        "List available lost reasons for closing deals. Use this to discover lost reason IDs before closing a deal as lost with productive_close_deal.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          include_archived: {
+            type: "boolean",
+            description: "Include archived lost reasons (default: false)",
+            default: false,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+
+    // Contract tools
+    {
+      name: "productive_list_contracts",
+      description:
+        "List recurring contracts. Contracts auto-generate new deals or budgets on a schedule. Filter by interval (monthly, quarterly, etc.).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          interval: {
+            type: "string",
+            enum: ["monthly", "bi-weekly", "weekly", "annual", "semi-annual", "quarterly"],
+            description: "Filter by recurrence interval",
+          },
+          limit: {
+            type: "number",
+            description: "Number of results per page (default: 20, max: 100)",
+            default: 20,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+    {
+      name: "productive_get_contract",
+      description:
+        "Get details of a specific contract including schedule, template, and recurrence settings.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          contract_id: {
+            type: "string",
+            description: "Contract ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["contract_id"],
+      },
+    },
+    {
+      name: "productive_create_contract",
+      description:
+        "Create a recurring contract. Specify the interval (monthly, quarterly, etc.), the source deal/budget as template, and the next occurrence date.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          interval: {
+            type: "string",
+            enum: ["monthly", "bi-weekly", "weekly", "annual", "semi-annual", "quarterly"],
+            description: "Recurrence interval (required)",
+          },
+          template_id: {
+            type: "string",
+            description: "Source deal or budget ID to copy each cycle (required)",
+          },
+          next_occurrence_on: {
+            type: "string",
+            description: "Date of next occurrence in YYYY-MM-DD format (required)",
+          },
+          ends_on: {
+            type: "string",
+            description: "End date for the contract in YYYY-MM-DD format",
+          },
+          copy_purchase_order_number: {
+            type: "boolean",
+            description: "Copy PO number from template",
+          },
+          copy_expenses: {
+            type: "boolean",
+            description: "Copy expenses from template",
+          },
+          use_rollover_hours: {
+            type: "boolean",
+            description: "Roll over unused hours to next cycle",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["interval", "template_id", "next_occurrence_on"],
+      },
+    },
+    {
+      name: "productive_update_contract",
+      description:
+        "Update a contract's schedule or settings.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          contract_id: {
+            type: "string",
+            description: "Contract ID (required)",
+          },
+          interval: {
+            type: "string",
+            enum: ["monthly", "bi-weekly", "weekly", "annual", "semi-annual", "quarterly"],
+            description: "New recurrence interval",
+          },
+          next_occurrence_on: {
+            type: "string",
+            description: "New next occurrence date in YYYY-MM-DD format",
+          },
+          ends_on: {
+            type: ["string", "null"],
+            description: "New end date (YYYY-MM-DD), or null to remove end date",
+          },
+          copy_purchase_order_number: {
+            type: "boolean",
+            description: "Copy PO number from template",
+          },
+          copy_expenses: {
+            type: "boolean",
+            description: "Copy expenses from template",
+          },
+          use_rollover_hours: {
+            type: "boolean",
+            description: "Roll over unused hours to next cycle",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["contract_id"],
+      },
+    },
+    {
+      name: "productive_generate_contract",
+      description:
+        "Manually trigger the next recurrence cycle for a contract, creating a new deal/budget from the template.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          contract_id: {
+            type: "string",
+            description: "Contract ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["contract_id"],
+      },
+    },
+
     // Revenue Distribution tools
     {
       name: "productive_list_revenue_distributions",
@@ -3213,6 +3783,116 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "productive_list_deal_activities": {
         const validated = ListDealActivitiesSchema.parse(args);
         const result = await listDealActivities(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      // Deal Status (pipeline stage) tools
+      case "productive_list_deal_statuses": {
+        const validated = ListDealStatusesSchema.parse(args);
+        const result = await listDealStatuses(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_get_deal_status": {
+        const validated = GetDealStatusSchema.parse(args);
+        const result = await getDealStatus(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      // Pipeline tools
+      case "productive_list_pipelines": {
+        const validated = ListPipelinesSchema.parse(args);
+        const result = await listPipelines(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_get_pipeline": {
+        const validated = GetPipelineSchema.parse(args);
+        const result = await getPipeline(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      // Company tools
+      case "productive_list_companies": {
+        const validated = ListCompaniesSchema.parse(args);
+        const result = await listCompanies(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_get_company": {
+        const validated = GetCompanySchema.parse(args);
+        const result = await getCompany(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_create_company": {
+        const validated = CreateCompanySchema.parse(args);
+        const result = await createCompany(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_update_company": {
+        const validated = UpdateCompanySchema.parse(args);
+        const result = await updateCompany(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_archive_company": {
+        const validated = ArchiveCompanySchema.parse(args);
+        const result = await archiveCompany(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      // Lost Reason tools
+      case "productive_list_lost_reasons": {
+        const validated = ListLostReasonsSchema.parse(args);
+        const result = await listLostReasons(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      // Contract tools
+      case "productive_list_contracts": {
+        const validated = ListContractsSchema.parse(args);
+        const result = await listContracts(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_get_contract": {
+        const validated = GetContractSchema.parse(args);
+        const result = await getContract(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_create_contract": {
+        const validated = CreateContractSchema.parse(args);
+        const result = await createContract(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_update_contract": {
+        const validated = UpdateContractSchema.parse(args);
+        const result = await updateContract(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_generate_contract": {
+        const validated = GenerateContractSchema.parse(args);
+        const result = await generateContract(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
         return { content: [{ type: "text", text: result }] };
       }
