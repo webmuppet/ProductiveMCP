@@ -343,6 +343,16 @@ export async function createPage(
     };
   }
 
+  if (args.root_page_id) {
+    payload.data.relationships = payload.data.relationships || {};
+    payload.data.relationships.root_page = {
+      data: {
+        type: "pages",
+        id: args.root_page_id,
+      },
+    };
+  }
+
   const response = await client.post<JSONAPIResponse>("/pages", payload);
 
   const pageData = Array.isArray(response.data)

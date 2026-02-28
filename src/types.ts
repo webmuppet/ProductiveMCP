@@ -451,6 +451,12 @@ export interface CreatePagePayload {
           id: string;
         };
       };
+      root_page?: {
+        data: {
+          type: "pages";
+          id: string;
+        };
+      };
     };
   };
 }

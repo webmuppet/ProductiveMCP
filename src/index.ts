@@ -1104,7 +1104,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_page",
       description:
-        'Create a new page (document) in Productive.io. Pages can be used for project specifications, documentation, meeting notes, etc.\n\nPages can be organized hierarchically using parent_page_id.\n\nExample:\n{\n  "title": "Project Specification",\n  "body": "# Requirements\\n\\nThis document outlines...",\n  "project_id": "1234",\n  "version_number": "1.0"\n}',
+        'Create a new page (document) in Productive.io. Pages can be used for project specifications, documentation, meeting notes, etc.\n\nPages can be organized hierarchically using parent_page_id and root_page_id. IMPORTANT: When creating a child page, you MUST provide BOTH parent_page_id AND root_page_id. The root_page_id is the topmost page in the hierarchy (the page with no parent). Omit both for top-level pages.\n\nExample (top-level page):\n{\n  "title": "Project Specification",\n  "body": "# Requirements\\n\\nThis document outlines...",\n  "project_id": "1234"\n}\n\nExample (child page):\n{\n  "title": "API Design",\n  "body": "# API Endpoints\\n\\n...",\n  "project_id": "1234",\n  "parent_page_id": "5678",\n  "root_page_id": "5670"\n}',
       inputSchema: {
         type: "object",
         properties: {
@@ -1123,7 +1123,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           parent_page_id: {
             type: "string",
             description:
-              "Create as a sub-page under an existing page (optional)",
+              "Create as a sub-page under this page. When provided, root_page_id must also be provided.",
+          },
+          root_page_id: {
+            type: "string",
+            description:
+              "ID of the root (topmost) page in the hierarchy. Required when parent_page_id is provided. The root page is the page with no parent in the tree.",
           },
           version_number: {
             type: "string",

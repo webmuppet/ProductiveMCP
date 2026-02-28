@@ -50,9 +50,17 @@ export const CreatePageSchema = z.object({
   body: z.string().optional(),
   project_id: z.string().optional(),
   parent_page_id: z.string().optional(),
+  root_page_id: z.string().optional(),
   version_number: z.string().optional(),
   response_format: ResponseFormatSchema,
-}).strict();
+}).strict().refine(
+  (data) => {
+    const hasParent = !!data.parent_page_id;
+    const hasRoot = !!data.root_page_id;
+    return hasParent === hasRoot;
+  },
+  { message: 'parent_page_id and root_page_id must both be present or both be absent' }
+);
 
 /**
  * Schema for updating a page
