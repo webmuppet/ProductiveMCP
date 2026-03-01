@@ -320,7 +320,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_task",
       description:
-        'Create a single task in Productive.io. Use this to create individual tasks with specific details. For creating multiple tasks at once, use productive_create_tasks_batch instead.\n\nIMPORTANT: Both project_id and task_list_id are REQUIRED. Use productive_list_task_lists to get valid task list IDs for a project.\n\nSupports custom fields:\n- task_type: Bug, Task, Feature, Question, Meeting, Test Case\n- priority: Highest, High, Medium, Low, Lowest\n- labels: Array of label strings\n- parent_task_id: ID of parent task (for creating sub-tasks)\n\nExample:\n{\n  "title": "Fix login bug on staging",\n  "description": "Users are unable to login after password reset",\n  "project_id": "1234",\n  "task_list_id": "5678",\n  "task_type": "Bug",\n  "priority": "High",\n  "due_date": "2025-11-20"\n}\n\nAlways confirm the target project with the user before creating tasks. Never repurpose an unrelated project.',
+        'Create a single task in Productive.io. Use this to create individual tasks with specific details. For creating multiple tasks at once, use productive_create_tasks_batch instead.\n\nIMPORTANT: Both project_id and task_list_id are REQUIRED. Use productive_list_task_lists to get valid task list IDs for a project.\n\nSupports custom fields:\n- task_type: Bug, Task, Feature, Question, Meeting, Test Case\n- priority: Highest, High, Medium, Low, Lowest\n- labels: Array of label strings\n- parent_task_id: ID of parent task (for creating sub-tasks)\n\nExample:\n{\n  "title": "Fix login bug on staging",\n  "description": "Users are unable to login after password reset",\n  "project_id": "1234",\n  "task_list_id": "5678",\n  "task_type": "Bug",\n  "priority": "High",\n  "due_date": "2025-11-20"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -471,7 +471,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_project",
       description:
-        "Create a new project. Requires name, project type, workflow, and project manager. Optionally link to a company (required for client projects). Use productive_list_workflows to find workflow IDs, productive_list_people to find person IDs for project manager. If this tool is unavailable, do NOT create resources under an existing project as a workaround — inform the user that the tool is missing.",
+        "Create a new project. Requires name, project type, workflow, and project manager. Optionally link to a company (required for client projects). Use productive_list_workflows to find workflow IDs, productive_list_people to find person IDs for project manager. ⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -516,7 +516,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_project",
       description:
-        "Update an existing project. Can change name, project type, colour, project manager, or company. Only provide fields you want to change.",
+        "Update an existing project. Can change name, project type, colour, project manager, or company. Only provide fields you want to change.\n\n⚠️ Verify the correct resource is targeted before modifying.",
       inputSchema: {
         type: "object",
         properties: {
@@ -557,7 +557,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_archive_project",
       description:
-        "Archive a project. Archived projects are hidden from default listings but can be restored later.",
+        "Archive a project. Archived projects are hidden from default listings but can be restored later.\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.",
       inputSchema: {
         type: "object",
         properties: {
@@ -578,7 +578,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_restore_project",
       description:
-        "Restore a previously archived project back to active status.",
+        "Restore a previously archived project back to active status.\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.",
       inputSchema: {
         type: "object",
         properties: {
@@ -709,7 +709,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_task_list",
       description:
-        'Create a new task list within a project. If board_id is not provided, the first board in the project will be used automatically.\n\nExample:\n{\n  "project_id": "1234",\n  "name": "Sprint 1"\n}\n\nAlways confirm the target project with the user before creating task lists. Never repurpose an unrelated project.',
+        'Create a new task list within a project. If board_id is not provided, the first board in the project will be used automatically.\n\nExample:\n{\n  "project_id": "1234",\n  "name": "Sprint 1"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -739,7 +739,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_task_list",
       description:
-        'Update a task list name.\n\nExample:\n{\n  "task_list_id": "5678",\n  "name": "Sprint 2"\n}',
+        'Update a task list name.\n\nExample:\n{\n  "task_list_id": "5678",\n  "name": "Sprint 2"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -764,7 +764,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_archive_task_list",
       description:
-        'Archive a task list. Archived task lists cannot be used for new tasks.\n\nExample:\n{\n  "task_list_id": "5678"\n}',
+        'Archive a task list. Archived task lists cannot be used for new tasks.\n\nExample:\n{\n  "task_list_id": "5678"\n}\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.',
       inputSchema: {
         type: "object",
         properties: {
@@ -785,7 +785,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_restore_task_list",
       description:
-        'Restore an archived task list to active status.\n\nExample:\n{\n  "task_list_id": "5678"\n}',
+        'Restore an archived task list to active status.\n\nExample:\n{\n  "task_list_id": "5678"\n}\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.',
       inputSchema: {
         type: "object",
         properties: {
@@ -806,7 +806,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_delete_task_list",
       description:
-        'Delete a task list permanently. Note: If deletion is not supported by the API, use productive_archive_task_list instead.\n\nExample:\n{\n  "task_list_id": "5678"\n}',
+        'Delete a task list permanently. Note: If deletion is not supported by the API, use productive_archive_task_list instead.\n\nExample:\n{\n  "task_list_id": "5678"\n}\n\n⚠️ Confirm with the user before deleting — this action is permanent and cannot be undone.',
       inputSchema: {
         type: "object",
         properties: {
@@ -821,7 +821,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_reposition_task_list",
       description:
-        'Reorder a task list by moving it before another task list.\n\nExample:\n{\n  "task_list_id": "5678",\n  "move_before_id": "9012"\n}',
+        'Reorder a task list by moving it before another task list.\n\nExample:\n{\n  "task_list_id": "5678",\n  "move_before_id": "9012"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -846,7 +846,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_move_task_list",
       description:
-        'Move a task list to a different board within the project.\n\nExample:\n{\n  "task_list_id": "5678",\n  "board_id": "9012"\n}',
+        'Move a task list to a different board within the project.\n\nExample:\n{\n  "task_list_id": "5678",\n  "board_id": "9012"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -871,7 +871,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_copy_task_list",
       description:
-        'Copy a task list to create a duplicate. Can copy to the same or different project.\n\nExample:\n{\n  "template_id": "5678",\n  "name": "Sprint 1 Copy",\n  "project_id": "1234",\n  "copy_open_tasks": true,\n  "copy_assignees": true\n}',
+        'Copy a task list to create a duplicate. Can copy to the same or different project.\n\nExample:\n{\n  "template_id": "5678",\n  "name": "Sprint 1 Copy",\n  "project_id": "1234",\n  "copy_open_tasks": true,\n  "copy_assignees": true\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -981,7 +981,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_todo",
       description:
-        'Create a todo/checklist item under an existing task.\n\nExample:\n{\n  "task_id": "12345",\n  "description": "Review code changes",\n  "assignee_id": "67890"\n}',
+        'Create a todo/checklist item under an existing task.\n\nExample:\n{\n  "task_id": "12345",\n  "description": "Review code changes",\n  "assignee_id": "67890"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1061,7 +1061,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_todo",
       description:
-        'Update a todo/checklist item (e.g., mark as complete, change description).\n\nExample:\n{\n  "todo_id": "98765",\n  "closed": true\n}',
+        'Update a todo/checklist item (e.g., mark as complete, change description).\n\nExample:\n{\n  "todo_id": "98765",\n  "closed": true\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1095,7 +1095,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_delete_todo",
       description:
-        'Delete a todo/checklist item.\n\nExample:\n{\n  "todo_id": "98765"\n}',
+        'Delete a todo/checklist item.\n\nExample:\n{\n  "todo_id": "98765"\n}\n\n⚠️ Confirm with the user before deleting — this action is permanent and cannot be undone.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1112,7 +1112,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_tasks_batch",
       description:
-        'Create multiple tasks efficiently in a single operation. This is the recommended way to create multiple tasks at once. Automatically handles rate limiting and reports successes/failures.\n\nExample:\n{\n  "tasks": [\n    {"title": "Migrate database to PostgreSQL"},\n    {"title": "Update API documentation", "due_date": "2025-11-25"},\n    {"title": "Write integration tests"}\n  ],\n  "project_id": "1234"\n}',
+        'Create multiple tasks efficiently in a single operation. This is the recommended way to create multiple tasks at once. Automatically handles rate limiting and reports successes/failures.\n\nExample:\n{\n  "tasks": [\n    {"title": "Migrate database to PostgreSQL"},\n    {"title": "Update API documentation", "due_date": "2025-11-25"},\n    {"title": "Write integration tests"}\n  ],\n  "project_id": "1234"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.\n⚠️ BATCH OPERATION — confirm the number of items and target location before executing. Errors are multiplied.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1199,7 +1199,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_task",
       description:
-        'Update an existing task. You can update the title, description, dates, or mark it as complete.\n\nExample:\n{\n  "task_id": "5678",\n  "title": "Updated task title",\n  "closed": true\n}',
+        'Update an existing task. You can update the title, description, dates, or mark it as complete.\n\nExample:\n{\n  "task_id": "5678",\n  "title": "Updated task title",\n  "closed": true\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1368,7 +1368,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_page",
       description:
-        'Create a new page (document) in Productive.io. Pages can be used for project specifications, documentation, meeting notes, etc.\n\nPages can be organized hierarchically using parent_page_id and root_page_id. IMPORTANT: When creating a child page, you MUST provide BOTH parent_page_id AND root_page_id. The root_page_id is the topmost page in the hierarchy (the page with no parent). Omit both for top-level pages.\n\nExample (top-level page):\n{\n  "title": "Project Specification",\n  "body": "# Requirements\\n\\nThis document outlines...",\n  "project_id": "1234"\n}\n\nExample (child page):\n{\n  "title": "API Design",\n  "body": "# API Endpoints\\n\\n...",\n  "project_id": "1234",\n  "parent_page_id": "5678",\n  "root_page_id": "5670"\n}',
+        'Create a new page (document) in Productive.io. Pages can be used for project specifications, documentation, meeting notes, etc.\n\nPages can be organized hierarchically using parent_page_id and root_page_id. IMPORTANT: When creating a child page, you MUST provide BOTH parent_page_id AND root_page_id. The root_page_id is the topmost page in the hierarchy (the page with no parent). Omit both for top-level pages.\n\nExample (top-level page):\n{\n  "title": "Project Specification",\n  "body": "# Requirements\\n\\nThis document outlines...",\n  "project_id": "1234"\n}\n\nExample (child page):\n{\n  "title": "API Design",\n  "body": "# API Endpoints\\n\\n...",\n  "project_id": "1234",\n  "parent_page_id": "5678",\n  "root_page_id": "5670"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1412,7 +1412,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_page",
       description:
-        'Update an existing page (document). You can update the title, body content, or both.\n\nWARNING: Ensure no user has the page open in Productive for successful updates.\n\nExample:\n{\n  "page_id": "5678",\n  "title": "Updated Project Spec",\n  "body": "# Updated Requirements\\n\\nNew content..."\n}',
+        'Update an existing page (document). You can update the title, body content, or both.\n\nWARNING: Ensure no user has the page open in Productive for successful updates.\n\nExample:\n{\n  "page_id": "5678",\n  "title": "Updated Project Spec",\n  "body": "# Updated Requirements\\n\\nNew content..."\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1441,7 +1441,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_delete_page",
       description:
-        'Delete a page (document) permanently.\n\nExample:\n{\n  "page_id": "5678"\n}',
+        'Delete a page (document) permanently.\n\nExample:\n{\n  "page_id": "5678"\n}\n\n⚠️ Confirm with the user before deleting — this action is permanent and cannot be undone.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1492,7 +1492,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_task_dependency",
       description:
-        'Create a dependency between two tasks. Dependencies help manage task order and prevent bottlenecks.\n\nDependency types:\n- blocking: The source task blocks the dependent task from starting\n- waiting_on: The source task is waiting on (blocked by) the dependent task\n- related: Tasks are related but do not block each other\n\nExample:\n{\n  "task_id": "12345",\n  "dependent_task_id": "67890",\n  "dependency_type": "blocking"\n}',
+        'Create a dependency between two tasks. Dependencies help manage task order and prevent bottlenecks.\n\nDependency types:\n- blocking: The source task blocks the dependent task from starting\n- waiting_on: The source task is waiting on (blocked by) the dependent task\n- related: Tasks are related but do not block each other\n\nExample:\n{\n  "task_id": "12345",\n  "dependent_task_id": "67890",\n  "dependency_type": "blocking"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1565,7 +1565,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_task_dependency",
       description:
-        'Update the type of an existing task dependency.\n\nExample:\n{\n  "dependency_id": "98765",\n  "dependency_type": "waiting_on"\n}',
+        'Update the type of an existing task dependency.\n\nExample:\n{\n  "dependency_id": "98765",\n  "dependency_type": "waiting_on"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1591,7 +1591,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_delete_task_dependency",
       description:
-        'Delete a task dependency.\n\nExample:\n{\n  "dependency_id": "98765"\n}',
+        'Delete a task dependency.\n\nExample:\n{\n  "dependency_id": "98765"\n}\n\n⚠️ Confirm with the user before deleting — this action is permanent and cannot be undone.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1608,7 +1608,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_mark_as_blocked_by",
       description:
-        'Smart workflow: Mark a task as blocked by another task. This automatically sets the task status to "Blocked" and creates a "waiting_on" dependency.\n\nExample:\n{\n  "task_id": "12345",\n  "blocked_by_task_id": "67890"\n}',
+        'Smart workflow: Mark a task as blocked by another task. This automatically sets the task status to "Blocked" and creates a "waiting_on" dependency.\n\nExample:\n{\n  "task_id": "12345",\n  "blocked_by_task_id": "67890"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1633,7 +1633,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_mark_as_duplicate",
       description:
-        'Smart workflow: Mark a task as duplicate/obsolete. This automatically sets the task status to "Obsolete / Won\'t Fix" and creates a "related" dependency to link to the original task.\n\nExample:\n{\n  "task_id": "12345",\n  "duplicate_of_task_id": "67890"\n}',
+        'Smart workflow: Mark a task as duplicate/obsolete. This automatically sets the task status to "Obsolete / Won\'t Fix" and creates a "related" dependency to link to the original task.\n\nExample:\n{\n  "task_id": "12345",\n  "duplicate_of_task_id": "67890"\n}\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1681,7 +1681,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_upload_attachment",
       description:
-        'Upload an attachment to a task, comment, or page. Supports three input sources: local file path, URL to download from, or base64-encoded content.\n\nExactly one of file_path, url, or base64_content must be provided.\n\nExample (file path):\n{\n  "attachable_type": "task",\n  "attachable_id": "12345",\n  "file_path": "/path/to/file.pdf",\n  "filename": "report.pdf"\n}\n\nExample (URL):\n{\n  "attachable_type": "task",\n  "attachable_id": "12345",\n  "url": "https://example.com/image.png",\n  "filename": "screenshot.png"\n}\n\nExample (base64):\n{\n  "attachable_type": "comment",\n  "attachable_id": "67890",\n  "base64_content": "iVBORw0KGgo...",\n  "filename": "diagram.png",\n  "content_type": "image/png"\n}',
+        'Upload an attachment to a task, comment, or page. Supports three input sources: local file path, URL to download from, or base64-encoded content.\n\nExactly one of file_path, url, or base64_content must be provided.\n\nExample (file path):\n{\n  "attachable_type": "task",\n  "attachable_id": "12345",\n  "file_path": "/path/to/file.pdf",\n  "filename": "report.pdf"\n}\n\nExample (URL):\n{\n  "attachable_type": "task",\n  "attachable_id": "12345",\n  "url": "https://example.com/image.png",\n  "filename": "screenshot.png"\n}\n\nExample (base64):\n{\n  "attachable_type": "comment",\n  "attachable_id": "67890",\n  "base64_content": "iVBORw0KGgo...",\n  "filename": "diagram.png",\n  "content_type": "image/png"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1766,7 +1766,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_comment",
       description:
-        'Create a comment on a task. The body accepts Markdown formatting which will be converted to HTML.\n\nExample:\n{\n  "task_id": "12345",\n  "body": "This looks good, ready for review."\n}',
+        'Create a comment on a task. The body accepts Markdown formatting which will be converted to HTML.\n\nExample:\n{\n  "task_id": "12345",\n  "body": "This looks good, ready for review."\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1813,7 +1813,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_comment",
       description:
-        'Update the body of an existing comment. The body accepts Markdown formatting which will be converted to HTML.\n\nExample:\n{\n  "comment_id": "12345",\n  "body": "Updated comment text"\n}',
+        'Update the body of an existing comment. The body accepts Markdown formatting which will be converted to HTML.\n\nExample:\n{\n  "comment_id": "12345",\n  "body": "Updated comment text"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1839,7 +1839,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_delete_comment",
       description:
-        'Delete a comment by ID. This action is permanent and cannot be undone.\n\nExample:\n{\n  "comment_id": "12345"\n}',
+        'Delete a comment by ID. This action is permanent and cannot be undone.\n\nExample:\n{\n  "comment_id": "12345"\n}\n\n⚠️ Confirm with the user before deleting — this action is permanent and cannot be undone.',
       inputSchema: {
         type: "object",
         properties: {
@@ -1893,7 +1893,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_budget",
       description:
-        'Create a new standalone budget. Requires name and start date. Optionally link to a project, company, and responsible person.\n\nBudget value is not set directly — it is computed from services added to the budget. Use productive_create_service to add line items after creation.\n\nFor budgets generated from a won deal, use productive_generate_budget_from_deal instead.\n\nExample:\n{\n  "name": "Q2 Retainer — Client X",\n  "date": "2026-04-01",\n  "project_id": "760385"\n}',
+        'Create a new standalone budget. Requires name and start date. Optionally link to a project, company, and responsible person.\n\nBudget value is not set directly — it is computed from services added to the budget. Use productive_create_service to add line items after creation.\n\nFor budgets generated from a won deal, use productive_generate_budget_from_deal instead.\n\nExample:\n{\n  "name": "Q2 Retainer — Client X",\n  "date": "2026-04-01",\n  "project_id": "760385"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -2012,7 +2012,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_budget",
       description:
-        'Update a budget. You can update the name, end date, or delivery date.\n\nExample:\n{\n  "budget_id": "5678",\n  "end_date": "2025-12-31"\n}',
+        'Update a budget. You can update the name, end date, or delivery date.\n\nExample:\n{\n  "budget_id": "5678",\n  "end_date": "2025-12-31"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -2047,7 +2047,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_mark_budget_delivered",
       description:
-        'Mark a budget as delivered with its delivery date. This sets the delivered_on field.\n\nExample:\n{\n  "budget_id": "5678",\n  "delivered_on": "2025-01-15"\n}',
+        'Mark a budget as delivered with its delivery date. This sets the delivered_on field.\n\nExample:\n{\n  "budget_id": "5678",\n  "delivered_on": "2025-01-15"\n}\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.',
       inputSchema: {
         type: "object",
         properties: {
@@ -2072,7 +2072,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_close_budget",
       description:
-        'Close a budget. Sets the budget status to closed.\n\nExample:\n{\n  "budget_id": "5678"\n}',
+        'Close a budget. Sets the budget status to closed.\n\nExample:\n{\n  "budget_id": "5678"\n}\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.',
       inputSchema: {
         type: "object",
         properties: {
@@ -2216,7 +2216,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_deal",
       description:
-        "Create a new deal in the sales pipeline. Requires name, start date, and deal_status_id. Optionally assign to a company, pipeline, and responsible person. Note: deal value/revenue is not set directly — it is computed from services. After creating a deal, use productive_create_service to add line items that define the deal value.",
+        "Create a new deal in the sales pipeline. Requires name, start date, and deal_status_id. Optionally assign to a company, pipeline, and responsible person. Note: deal value/revenue is not set directly — it is computed from services. After creating a deal, use productive_create_service to add line items that define the deal value.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2275,7 +2275,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_deal",
       description:
-        "Update a deal's attributes or move it to a different pipeline stage by changing deal_status_id. For adding notes or logging activity on a deal, use productive_create_deal_comment instead.",
+        "Update a deal's attributes or move it to a different pipeline stage by changing deal_status_id. For adding notes or logging activity on a deal, use productive_create_deal_comment instead.\n\n⚠️ Verify the correct resource is targeted before modifying.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2330,7 +2330,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_close_deal",
       description:
-        "Close a deal as won or lost. Requires the specific deal_status_id for the Won or Lost stage. When closing as lost, provide a lost_reason_id. This does NOT auto-generate a budget — use productive_generate_budget_from_deal as a separate step after closing as won.",
+        "Close a deal as won or lost. Requires the specific deal_status_id for the Won or Lost stage. When closing as lost, provide a lost_reason_id. This does NOT auto-generate a budget — use productive_generate_budget_from_deal as a separate step after closing as won.\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2366,7 +2366,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_generate_budget_from_deal",
       description:
-        "Generate a budget from a won deal. This creates a new budget linked to the deal, enabling invoicing and project financial tracking. The deal should be in a 'Won' status before generating a budget.",
+        "Generate a budget from a won deal. This creates a new budget linked to the deal, enabling invoicing and project financial tracking. The deal should be in a 'Won' status before generating a budget.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2387,7 +2387,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_copy_deal",
       description:
-        "Duplicate an existing deal. Creates a copy with the same attributes and relationships.",
+        "Duplicate an existing deal. Creates a copy with the same attributes and relationships.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2439,7 +2439,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_deal_comment",
       description:
-        "Add a comment/note to a deal. Use this to log call notes, meeting outcomes, status updates, or any activity on a deal. Accepts Markdown which is converted to HTML. Example: 'Had call with CEO, agreed to move forward with proposal.'",
+        "Add a comment/note to a deal. Use this to log call notes, meeting outcomes, status updates, or any activity on a deal. Accepts Markdown which is converted to HTML. Example: 'Had call with CEO, agreed to move forward with proposal.'\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2675,7 +2675,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_company",
       description:
-        "Create a new company. Only name is required. Optionally add billing info, contact details (emails, phones, websites), tags, and currency.",
+        "Create a new company. Only name is required. Optionally add billing info, contact details (emails, phones, websites), tags, and currency.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2740,7 +2740,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_company",
       description:
-        "Update a company's details — name, billing info, contact information, tags, or currency.",
+        "Update a company's details — name, billing info, contact information, tags, or currency.\n\n⚠️ Verify the correct resource is targeted before modifying.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2809,7 +2809,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_archive_company",
       description:
-        "Archive a company. This is a soft delete — the company can be restored from the Productive UI.",
+        "Archive a company. This is a soft delete — the company can be restored from the Productive UI.\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2907,7 +2907,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_contract",
       description:
-        "Create a recurring contract. Specify the interval (monthly, quarterly, etc.), the source deal/budget as template, and the next occurrence date.",
+        "Create a recurring contract. Specify the interval (monthly, quarterly, etc.), the source deal/budget as template, and the next occurrence date.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2953,7 +2953,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_contract",
       description:
-        "Update a contract's schedule or settings.",
+        "Update a contract's schedule or settings.\n\n⚠️ Verify the correct resource is targeted before modifying.",
       inputSchema: {
         type: "object",
         properties: {
@@ -2999,7 +2999,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_generate_contract",
       description:
-        "Manually trigger the next recurrence cycle for a contract, creating a new deal/budget from the template.",
+        "Manually trigger the next recurrence cycle for a contract, creating a new deal/budget from the template.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {
@@ -3226,7 +3226,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_revenue_distribution",
       description:
-        'Create a new revenue distribution for a budget.\n\nExample:\n{\n  "deal_id": "5678",\n  "start_on": "2025-01-01",\n  "end_on": "2025-03-31",\n  "amount_percent": 100\n}',
+        'Create a new revenue distribution for a budget.\n\nExample:\n{\n  "deal_id": "5678",\n  "start_on": "2025-01-01",\n  "end_on": "2025-03-31",\n  "amount_percent": 100\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3259,7 +3259,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_revenue_distribution",
       description:
-        'Update a revenue distribution. You can update the dates or amount percentage.\n\nExample:\n{\n  "distribution_id": "98765",\n  "end_on": "2025-04-30"\n}',
+        'Update a revenue distribution. You can update the dates or amount percentage.\n\nExample:\n{\n  "distribution_id": "98765",\n  "end_on": "2025-04-30"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3292,7 +3292,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_delete_revenue_distribution",
       description:
-        'Delete a revenue distribution.\n\nExample:\n{\n  "distribution_id": "98765"\n}',
+        'Delete a revenue distribution.\n\nExample:\n{\n  "distribution_id": "98765"\n}\n\n⚠️ Confirm with the user before deleting — this action is permanent and cannot be undone.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3307,7 +3307,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_extend_revenue_distribution",
       description:
-        'Extend a revenue distribution end date. Use this to extend the end date when a project delivery is delayed.\n\nExample:\n{\n  "distribution_id": "98765",\n  "new_end_on": "2025-04-30"\n}',
+        'Extend a revenue distribution end date. Use this to extend the end date when a project delivery is delayed.\n\nExample:\n{\n  "distribution_id": "98765",\n  "new_end_on": "2025-04-30"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3431,7 +3431,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_service",
       description:
-        'Create a new service (budget line item) in Productive.io. Services belong to a budget/deal and require a service type.\n\nBilling types: Fixed, Time and Materials, Non-Billable\nUnits: Hour, Piece, Day\n\nIMPORTANT: Both deal_id and service_type_id are REQUIRED. Use productive_list_budgets and productive_list_service_types to find valid IDs.\n\nExample:\n{\n  "name": "Development",\n  "deal_id": "5678",\n  "service_type_id": "1234",\n  "billing_type": "Time and Materials",\n  "unit": "Hour",\n  "price": "150.00"\n}',
+        'Create a new service (budget line item) in Productive.io. Services belong to a budget/deal and require a service type.\n\nBilling types: Fixed, Time and Materials, Non-Billable\nUnits: Hour, Piece, Day\n\nIMPORTANT: Both deal_id and service_type_id are REQUIRED. Use productive_list_budgets and productive_list_service_types to find valid IDs.\n\nExample:\n{\n  "name": "Development",\n  "deal_id": "5678",\n  "service_type_id": "1234",\n  "billing_type": "Time and Materials",\n  "unit": "Hour",\n  "price": "150.00"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3506,7 +3506,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_service",
       description:
-        'Update an existing service. You can update the name, description, billing type, unit, price, quantity, or tracking settings.\n\nExample:\n{\n  "service_id": "12345",\n  "price": "175.00",\n  "time_tracking_enabled": true\n}',
+        'Update an existing service. You can update the name, description, billing type, unit, price, quantity, or tracking settings.\n\nExample:\n{\n  "service_id": "12345",\n  "price": "175.00",\n  "time_tracking_enabled": true\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3622,7 +3622,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_service_type",
       description:
-        'Create a new service type. Service types classify services within budgets.\n\nExample:\n{\n  "name": "Development",\n  "description": "Software development services"\n}',
+        'Create a new service type. Service types classify services within budgets.\n\nExample:\n{\n  "name": "Development",\n  "description": "Software development services"\n}\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3647,7 +3647,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_update_service_type",
       description:
-        'Update a service type name or description.\n\nExample:\n{\n  "service_type_id": "1234",\n  "name": "Backend Development"\n}',
+        'Update a service type name or description.\n\nExample:\n{\n  "service_type_id": "1234",\n  "name": "Backend Development"\n}\n\n⚠️ Verify the correct resource is targeted before modifying.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3676,7 +3676,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_archive_service_type",
       description:
-        'Archive a service type. Archived service types cannot be used for new services.\n\nExample:\n{\n  "service_type_id": "1234"\n}',
+        'Archive a service type. Archived service types cannot be used for new services.\n\nExample:\n{\n  "service_type_id": "1234"\n}\n\n⚠️ Confirm with the user before executing — this changes the resource\'s status and may not be easily reversible.',
       inputSchema: {
         type: "object",
         properties: {
