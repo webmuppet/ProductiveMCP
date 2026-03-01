@@ -84,6 +84,7 @@ import {
   MarkBudgetDeliveredSchema,
   CloseBudgetSchema,
   AuditProjectBudgetsSchema,
+  CreateBudgetSchema,
 } from "./schemas/budget.js";
 import {
   ListRevenueDistributionsSchema,
@@ -200,6 +201,7 @@ import { listSubtasks } from "./tools/subtasks.js";
 import {
   listBudgets,
   getBudget,
+  createBudget,
   updateBudget,
   markBudgetDelivered,
   closeBudget,
@@ -1711,6 +1713,56 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
 
     // Budget tools
+    {
+      name: "productive_create_budget",
+      description:
+        'Create a new standalone budget. Requires name and start date. Optionally link to a project, company, and responsible person.\n\nBudget value is not set directly — it is computed from services added to the budget. Use productive_create_service to add line items after creation.\n\nFor budgets generated from a won deal, use productive_generate_budget_from_deal instead.\n\nExample:\n{\n  "name": "Q2 Retainer — Client X",\n  "date": "2026-04-01",\n  "project_id": "760385"\n}',
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Budget name (required, max 200 characters)",
+          },
+          date: {
+            type: "string",
+            description: "Start date in ISO 8601 format (YYYY-MM-DD, required)",
+          },
+          end_date: {
+            type: ["string", "null"],
+            description: "End date in ISO 8601 format (YYYY-MM-DD), or null",
+          },
+          currency: {
+            type: "string",
+            description:
+              "ISO currency code (e.g. USD, EUR). Defaults to org default if omitted.",
+          },
+          purchase_order_number: {
+            type: "string",
+            description: "Purchase order / PO reference number",
+          },
+          project_id: {
+            type: "string",
+            description: "Link to a project by ID",
+          },
+          company_id: {
+            type: "string",
+            description: "Link to a company by ID",
+          },
+          responsible_id: {
+            type: "string",
+            description: "Assign a responsible person by person ID",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["name", "date"],
+      },
+    },
     {
       name: "productive_list_budgets",
       description:
@@ -3839,6 +3891,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // Budget tools
+      case "productive_create_budget": {
+        const validated = CreateBudgetSchema.parse(args);
+        const result = await createBudget(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
       case "productive_list_budgets": {
         const validated = ListBudgetsSchema.parse(args);
         const result = await listBudgets(client, validated);

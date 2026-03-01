@@ -9,6 +9,7 @@ import type {
   Budget,
   FormattedBudget,
   UpdateBudgetPayload,
+  CreateBudgetPayload,
   BudgetAuditResult,
   BudgetAuditIssue,
 } from "../types.js";
@@ -28,6 +29,7 @@ import {
   MarkBudgetDeliveredSchema,
   CloseBudgetSchema,
   AuditProjectBudgetsSchema,
+  CreateBudgetSchema,
 } from "../schemas/budget.js";
 
 /**
@@ -268,6 +270,79 @@ export async function closeBudget(
     args.response_format,
     () =>
       `Budget closed successfully:\n\n${formatSingleBudgetMarkdown(budget)}`,
+  );
+
+  return truncateResponse(result, args.response_format);
+}
+
+/**
+ * Create a new standalone budget.
+ */
+export async function createBudget(
+  client: ProductiveClient,
+  args: z.infer<typeof CreateBudgetSchema>,
+): Promise<string> {
+  const payload: CreateBudgetPayload = {
+    data: {
+      type: "deals",
+      attributes: {
+        name: args.name,
+        date: args.date,
+        budget: true, // marks this as a budget, not a deal
+        deal_type_id: 2, // 2 = client
+      },
+    },
+  };
+
+  if (args.end_date !== undefined) {
+    payload.data.attributes.end_date = args.end_date;
+  }
+  if (args.currency) {
+    payload.data.attributes.currency = args.currency;
+  }
+  if (args.purchase_order_number) {
+    payload.data.attributes.purchase_order_number = args.purchase_order_number;
+  }
+
+  // Relationships — only add block if at least one rel is present
+  if (args.project_id || args.company_id || args.responsible_id) {
+    payload.data.relationships = {};
+
+    if (args.project_id) {
+      payload.data.relationships.project = {
+        data: { type: "projects", id: args.project_id },
+      };
+    }
+    if (args.company_id) {
+      payload.data.relationships.company = {
+        data: { type: "companies", id: args.company_id },
+      };
+    }
+    if (args.responsible_id) {
+      payload.data.relationships.responsible = {
+        data: { type: "people", id: args.responsible_id },
+      };
+    }
+  }
+
+  const response = await client.post<JSONAPIResponse>("/deals", payload, {
+    include: "project,company,responsible",
+  });
+
+  const budgetData = Array.isArray(response.data)
+    ? response.data[0]
+    : response.data;
+  const budget = formatBudget(
+    budgetData as Budget,
+    client.getOrgId(),
+    response.included,
+  );
+
+  const result = formatResponse(
+    budget,
+    args.response_format,
+    () =>
+      `Budget created successfully:\n\n${formatSingleBudgetMarkdown(budget)}`,
   );
 
   return truncateResponse(result, args.response_format);

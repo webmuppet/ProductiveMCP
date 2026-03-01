@@ -84,3 +84,24 @@ export const AuditProjectBudgetsSchema = z
     response_format: ResponseFormatSchema,
   })
   .strict();
+
+/**
+ * Schema for creating a standalone budget.
+ * Budgets share the /deals endpoint but use budget:true and have no pipeline stage.
+ */
+export const CreateBudgetSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Budget name is required")
+      .max(200, "Name must be 200 characters or less"),
+    date: ISO8601DateSchema,
+    end_date: z.union([ISO8601DateSchema, z.null()]).optional(),
+    currency: z.string().optional(),
+    purchase_order_number: z.string().optional(),
+    project_id: z.string().optional(),
+    company_id: z.string().optional(),
+    responsible_id: z.string().optional(),
+    response_format: ResponseFormatSchema,
+  })
+  .strict();

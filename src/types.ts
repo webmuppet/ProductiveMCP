@@ -635,6 +635,26 @@ export interface UpdateBudgetPayload {
   };
 }
 
+export interface CreateBudgetPayload {
+  data: {
+    type: "deals";
+    attributes: {
+      name: string;
+      date: string;
+      budget: true;
+      deal_type_id: number;
+      end_date?: string | null;
+      currency?: string;
+      purchase_order_number?: string | null;
+    };
+    relationships?: {
+      project?: { data: { type: "projects"; id: string } };
+      company?: { data: { type: "companies"; id: string } };
+      responsible?: { data: { type: "people"; id: string } };
+    };
+  };
+}
+
 export interface FormattedBudget {
   id: string;
   name: string;

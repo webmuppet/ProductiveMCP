@@ -1230,7 +1230,7 @@ export function formatBudget(
   return {
     id: budget.id,
     name: attributes.name,
-    status: attributes.budget_status === 1 ? "open" : "closed",
+    status: attributes.budget_status === 2 ? "closed" : "open", // treat null/undefined as open (default)
     start_date: attributes.date || null,
     end_date: attributes.end_date || null,
     delivered_on: attributes.delivered_on || null,
