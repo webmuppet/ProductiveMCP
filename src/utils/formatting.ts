@@ -772,46 +772,65 @@ export function formatProject(
 ): FormattedProject {
   const attributes = project.attributes as ProjectAttributes;
 
-  // Extract client/company info from relationships and included data
-  let clientId: string | null = null;
-  let clientName: string | null = null;
+  // Helper to look up a related resource name from included data
+  const findIncludedName = (
+    relType: string,
+    relId: string | null,
+  ): string | null => {
+    if (!relId || !includedData) return null;
+    const item = includedData.find(
+      (
+        i,
+      ): i is { type: string; id: string; attributes?: { name?: string } } =>
+        typeof i === "object" &&
+        i !== null &&
+        "type" in i &&
+        (i as { type: unknown }).type === relType &&
+        "id" in i &&
+        (i as { id: unknown }).id === relId,
+    );
+    return item?.attributes?.name ?? null;
+  };
 
+  // Extract client/company info
+  let clientId: string | null = null;
   if (
     project.relationships?.company?.data &&
     "id" in project.relationships.company.data
   ) {
     clientId = project.relationships.company.data.id;
+  }
 
-    // Try to find company name in included data
-    if (includedData) {
-      const company = includedData.find(
-        (
-          item,
-        ): item is {
-          type: string;
-          id: string;
-          attributes?: { name?: string };
-        } =>
-          typeof item === "object" &&
-          item !== null &&
-          "type" in item &&
-          (item as { type: unknown }).type === "companies" &&
-          "id" in item &&
-          (item as { id: unknown }).id === clientId,
-      );
-      if (company?.attributes?.name) {
-        clientName = company.attributes.name;
-      }
-    }
+  // Extract project_manager info (relationship type is "people")
+  let projectManagerId: string | null = null;
+  if (
+    project.relationships?.project_manager?.data &&
+    "id" in project.relationships.project_manager.data
+  ) {
+    projectManagerId = project.relationships.project_manager.data.id;
+  }
+
+  // Extract workflow info
+  let workflowId: string | null = null;
+  if (
+    project.relationships?.workflow?.data &&
+    "id" in project.relationships.workflow.data
+  ) {
+    workflowId = project.relationships.workflow.data.id;
   }
 
   return {
     id: project.id,
     name: attributes.name,
     project_number: attributes.project_number || null,
-    archived: attributes.archived,
+    project_type_id: attributes.project_type_id ?? null,
+    archived: !!attributes.archived_at, // API uses archived_at timestamp (null = active)
     client_id: clientId,
-    client_name: clientName,
+    client_name: findIncludedName("companies", clientId),
+    project_manager_id: projectManagerId,
+    project_manager_name: findIncludedName("people", projectManagerId),
+    workflow_id: workflowId,
+    workflow_name: findIncludedName("workflows", workflowId),
   };
 }
 
@@ -840,6 +859,81 @@ export function formatProjectListMarkdown(
       lines.push(`  Client ID: ${project.client_id}`);
     }
     lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a single project as a detailed markdown block
+ */
+export function formatSingleProjectMarkdown(project: FormattedProject): string {
+  const lines: string[] = [];
+  const status = project.archived ? "Archived" : "Active";
+  const projectNum = project.project_number
+    ? ` (${project.project_number})`
+    : "";
+
+  lines.push(`# ${project.name}${projectNum}`);
+  lines.push("");
+  lines.push(`**Status:** ${status}`);
+  lines.push(`**ID:** ${project.id}`);
+
+  if (project.project_type_id !== null) {
+    lines.push(`**Project Type ID:** ${project.project_type_id}`);
+  }
+
+  if (project.client_name) {
+    lines.push(`**Client:** ${project.client_name} (ID: ${project.client_id})`);
+  } else if (project.client_id) {
+    lines.push(`**Client ID:** ${project.client_id}`);
+  }
+
+  if (project.project_manager_name) {
+    lines.push(
+      `**Project Manager:** ${project.project_manager_name} (ID: ${project.project_manager_id})`,
+    );
+  } else if (project.project_manager_id) {
+    lines.push(`**Project Manager ID:** ${project.project_manager_id}`);
+  }
+
+  if (project.workflow_name) {
+    lines.push(
+      `**Workflow:** ${project.workflow_name} (ID: ${project.workflow_id})`,
+    );
+  } else if (project.workflow_id) {
+    lines.push(`**Workflow ID:** ${project.workflow_id}`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a workflow for display
+ */
+export function formatWorkflow(
+  workflow: import("../types.js").Workflow,
+): import("../types.js").FormattedWorkflow {
+  const attributes = workflow.attributes as import("../types.js").WorkflowAttributes;
+  return {
+    id: workflow.id,
+    name: attributes.name,
+  };
+}
+
+/**
+ * Format a list of workflows as markdown
+ */
+export function formatWorkflowListMarkdown(
+  workflows: import("../types.js").FormattedWorkflow[],
+): string {
+  if (workflows.length === 0) {
+    return "No workflows found.";
+  }
+
+  const lines = ["# Workflows", ""];
+  for (const wf of workflows) {
+    lines.push(`- **${wf.name}** (ID: ${wf.id})`);
   }
 
   return lines.join("\n");

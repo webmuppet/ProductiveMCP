@@ -10,6 +10,7 @@ import type {
   TaskList,
   Person,
   Board,
+  Workflow,
   FormattedProject,
   FormattedTaskList,
   FormattedPerson,
@@ -19,10 +20,15 @@ import type {
   RepositionTaskListPayload,
   MoveTaskListPayload,
   CopyTaskListPayload,
+  CreateProjectPayload,
+  UpdateProjectPayload,
 } from "../types.js";
 import {
   formatProject,
   formatProjectListMarkdown,
+  formatSingleProjectMarkdown,
+  formatWorkflow,
+  formatWorkflowListMarkdown,
   formatTaskList,
   formatTaskListsMarkdown,
   formatSingleTaskListMarkdown,
@@ -35,6 +41,12 @@ import {
 } from "../utils/formatting.js";
 import {
   ListProjectsSchema,
+  GetProjectSchema,
+  CreateProjectSchema,
+  UpdateProjectSchema,
+  ArchiveProjectSchema,
+  RestoreProjectSchema,
+  ListWorkflowsSchema,
   ListTaskListsSchema,
   ListPeopleSchema,
   ListBoardsSchema,
@@ -107,6 +119,233 @@ export async function listProjects(
 
   const result = formatResponse(paginatedProjects, args.response_format, () =>
     formatProjectListMarkdown(paginatedProjects),
+  );
+
+  return truncateResponse(result, args.response_format);
+}
+
+/**
+ * Get a single project by ID
+ */
+export async function getProject(
+  client: ProductiveClient,
+  args: z.infer<typeof GetProjectSchema>,
+): Promise<string> {
+  const response = await client.get<JSONAPIResponse>(
+    `/projects/${args.project_id}`,
+    { include: "company,project_manager,workflow" },
+  );
+
+  const projectData = Array.isArray(response.data)
+    ? response.data[0]
+    : response.data;
+  const project = formatProject(
+    projectData as Project,
+    response.included,
+  );
+
+  const result = formatResponse(project, args.response_format, () =>
+    formatSingleProjectMarkdown(project),
+  );
+
+  return truncateResponse(result, args.response_format);
+}
+
+/**
+ * Create a new project
+ */
+export async function createProject(
+  client: ProductiveClient,
+  args: z.infer<typeof CreateProjectSchema>,
+): Promise<string> {
+  const payload: CreateProjectPayload = {
+    data: {
+      type: "projects",
+      attributes: {
+        name: args.name,
+        project_type_id: args.project_type_id,
+      },
+      relationships: {
+        workflow: { data: { type: "workflows", id: args.workflow_id } },
+        project_manager: {
+          data: { type: "people", id: args.project_manager_id },
+        },
+      },
+    },
+  };
+
+  if (args.project_color_id !== undefined) {
+    payload.data.attributes.project_color_id = args.project_color_id;
+  }
+
+  if (args.company_id) {
+    payload.data.relationships.company = {
+      data: { type: "companies", id: args.company_id },
+    };
+  }
+
+  const response = await client.post<JSONAPIResponse>("/projects", payload, {
+    include: "company,project_manager,workflow",
+  });
+
+  const projectData = Array.isArray(response.data)
+    ? response.data[0]
+    : response.data;
+  const project = formatProject(
+    projectData as Project,
+    response.included,
+  );
+
+  const result = formatResponse(
+    project,
+    args.response_format,
+    () => `Project created successfully:\n\n${formatSingleProjectMarkdown(project)}`,
+  );
+
+  return truncateResponse(result, args.response_format);
+}
+
+/**
+ * Update an existing project
+ */
+export async function updateProject(
+  client: ProductiveClient,
+  args: z.infer<typeof UpdateProjectSchema>,
+): Promise<string> {
+  const payload: UpdateProjectPayload = {
+    data: {
+      type: "projects",
+      id: args.project_id,
+    },
+  };
+
+  // Build attributes block only if attribute fields are provided
+  if (
+    args.name !== undefined ||
+    args.project_type_id !== undefined ||
+    args.project_color_id !== undefined
+  ) {
+    payload.data.attributes = {};
+    if (args.name !== undefined) payload.data.attributes.name = args.name;
+    if (args.project_type_id !== undefined)
+      payload.data.attributes.project_type_id = args.project_type_id;
+    if (args.project_color_id !== undefined)
+      payload.data.attributes.project_color_id = args.project_color_id;
+  }
+
+  // Build relationships block only if relationship fields are provided
+  if (args.project_manager_id !== undefined || args.company_id !== undefined) {
+    payload.data.relationships = {};
+    if (args.project_manager_id !== undefined) {
+      payload.data.relationships.project_manager = {
+        data: { type: "people", id: args.project_manager_id },
+      };
+    }
+    if (args.company_id !== undefined) {
+      payload.data.relationships.company = {
+        data: { type: "companies", id: args.company_id },
+      };
+    }
+  }
+
+  await client.patch<JSONAPIResponse>(`/projects/${args.project_id}`, payload);
+
+  // Fetch updated project with includes
+  const getResponse = await client.get<JSONAPIResponse>(
+    `/projects/${args.project_id}`,
+    { include: "company,project_manager,workflow" },
+  );
+
+  const projectData = Array.isArray(getResponse.data)
+    ? getResponse.data[0]
+    : getResponse.data;
+  const project = formatProject(
+    projectData as Project,
+    getResponse.included,
+  );
+
+  const result = formatResponse(
+    project,
+    args.response_format,
+    () => `Project updated successfully:\n\n${formatSingleProjectMarkdown(project)}`,
+  );
+
+  return truncateResponse(result, args.response_format);
+}
+
+/**
+ * Archive a project
+ */
+export async function archiveProject(
+  client: ProductiveClient,
+  args: z.infer<typeof ArchiveProjectSchema>,
+): Promise<string> {
+  const response = await client.patch<JSONAPIResponse>(
+    `/projects/${args.project_id}/archive`,
+    {},
+  );
+
+  const projectData = Array.isArray(response.data)
+    ? response.data[0]
+    : response.data;
+  const project = formatProject(
+    projectData as Project,
+    response.included,
+  );
+
+  const result = formatResponse(
+    project,
+    args.response_format,
+    () => `Project archived successfully:\n\n${formatSingleProjectMarkdown(project)}`,
+  );
+
+  return truncateResponse(result, args.response_format);
+}
+
+/**
+ * Restore an archived project
+ */
+export async function restoreProject(
+  client: ProductiveClient,
+  args: z.infer<typeof RestoreProjectSchema>,
+): Promise<string> {
+  const response = await client.patch<JSONAPIResponse>(
+    `/projects/${args.project_id}/restore`,
+    {},
+  );
+
+  const projectData = Array.isArray(response.data)
+    ? response.data[0]
+    : response.data;
+  const project = formatProject(
+    projectData as Project,
+    response.included,
+  );
+
+  const result = formatResponse(
+    project,
+    args.response_format,
+    () => `Project restored successfully:\n\n${formatSingleProjectMarkdown(project)}`,
+  );
+
+  return truncateResponse(result, args.response_format);
+}
+
+/**
+ * List workflows
+ */
+export async function listWorkflows(
+  client: ProductiveClient,
+  args: z.infer<typeof ListWorkflowsSchema>,
+): Promise<string> {
+  const response = await client.get<JSONAPIResponse>("/workflows");
+
+  const workflows = (
+    Array.isArray(response.data) ? response.data : [response.data]
+  ).map((wf) => formatWorkflow(wf as Workflow));
+
+  const result = formatResponse(workflows, args.response_format, () =>
+    formatWorkflowListMarkdown(workflows),
   );
 
   return truncateResponse(result, args.response_format);

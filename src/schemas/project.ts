@@ -157,3 +157,86 @@ export const CopyTaskListSchema = z
     response_format: ResponseFormatSchema,
   })
   .strict();
+
+// ─── Project CRUD Schemas ──────────────────────────────────────────────────
+
+/**
+ * Schema for getting a single project
+ */
+export const GetProjectSchema = z
+  .object({
+    project_id: z.string().min(1, "Project ID is required"),
+    response_format: ResponseFormatSchema,
+  })
+  .strict();
+
+/**
+ * Schema for creating a project
+ */
+export const CreateProjectSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Project name is required")
+      .max(200, "Name must be 200 characters or less"),
+    project_type_id: z
+      .number()
+      .int()
+      .positive("Project type ID must be a positive integer"),
+    workflow_id: z.string().min(1, "Workflow ID is required"),
+    project_manager_id: z
+      .string()
+      .min(1, "Project manager ID (person ID) is required"),
+    company_id: z.string().optional(),
+    project_color_id: z.number().int().positive().optional(),
+    response_format: ResponseFormatSchema,
+  })
+  .strict();
+
+/**
+ * Schema for updating a project
+ */
+export const UpdateProjectSchema = z
+  .object({
+    project_id: z.string().min(1, "Project ID is required"),
+    name: z
+      .string()
+      .min(1, "Name must not be empty")
+      .max(200, "Name must be 200 characters or less")
+      .optional(),
+    project_type_id: z.number().int().positive().optional(),
+    project_color_id: z.number().int().positive().optional(),
+    project_manager_id: z.string().optional(),
+    company_id: z.string().optional(),
+    response_format: ResponseFormatSchema,
+  })
+  .strict();
+
+/**
+ * Schema for archiving a project
+ */
+export const ArchiveProjectSchema = z
+  .object({
+    project_id: z.string().min(1, "Project ID is required"),
+    response_format: ResponseFormatSchema,
+  })
+  .strict();
+
+/**
+ * Schema for restoring an archived project
+ */
+export const RestoreProjectSchema = z
+  .object({
+    project_id: z.string().min(1, "Project ID is required"),
+    response_format: ResponseFormatSchema,
+  })
+  .strict();
+
+/**
+ * Schema for listing workflows
+ */
+export const ListWorkflowsSchema = z
+  .object({
+    response_format: ResponseFormatSchema,
+  })
+  .strict();

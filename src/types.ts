@@ -52,14 +52,33 @@ export interface Task extends JSONAPIData<TaskAttributes> {
 export interface ProjectAttributes {
   name: string;
   project_number?: string;
-  archived: boolean;
+  project_type_id?: number;
+  project_color_id?: number;
+  archived_at?: string | null; // null = active, timestamp string = archived
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface Project extends JSONAPIData<ProjectAttributes> {
   type: "projects";
   id: string;
+}
+
+// Workflow types
+export interface WorkflowAttributes {
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Workflow extends JSONAPIData<WorkflowAttributes> {
+  type: "workflows";
+  id: string;
+}
+
+export interface FormattedWorkflow {
+  id: string;
+  name: string;
 }
 
 // Task list types
@@ -375,9 +394,14 @@ export interface FormattedProject {
   id: string;
   name: string;
   project_number: string | null;
+  project_type_id: number | null;
   archived: boolean;
   client_id: string | null;
   client_name: string | null;
+  project_manager_id: string | null;
+  project_manager_name: string | null;
+  workflow_id: string | null;
+  workflow_name: string | null;
 }
 
 export interface FormattedTaskList {
@@ -651,6 +675,38 @@ export interface CreateBudgetPayload {
       project?: { data: { type: "projects"; id: string } };
       company?: { data: { type: "companies"; id: string } };
       responsible?: { data: { type: "people"; id: string } };
+    };
+  };
+}
+
+export interface CreateProjectPayload {
+  data: {
+    type: "projects";
+    attributes: {
+      name: string;
+      project_type_id: number;
+      project_color_id?: number;
+    };
+    relationships: {
+      workflow: { data: { type: "workflows"; id: string } };
+      project_manager: { data: { type: "people"; id: string } };
+      company?: { data: { type: "companies"; id: string } };
+    };
+  };
+}
+
+export interface UpdateProjectPayload {
+  data: {
+    type: "projects";
+    id: string;
+    attributes?: {
+      name?: string;
+      project_type_id?: number;
+      project_color_id?: number;
+    };
+    relationships?: {
+      project_manager?: { data: { type: "people"; id: string } };
+      company?: { data: { type: "companies"; id: string } };
     };
   };
 }

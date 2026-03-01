@@ -19,6 +19,12 @@ import { TASK_TYPES, PRIORITIES, WORKFLOW_STATUSES } from "./constants.js";
 // Import schemas
 import {
   ListProjectsSchema,
+  GetProjectSchema,
+  CreateProjectSchema,
+  UpdateProjectSchema,
+  ArchiveProjectSchema,
+  RestoreProjectSchema,
+  ListWorkflowsSchema,
   ListTaskListsSchema,
   ListPeopleSchema,
   ListBoardsSchema,
@@ -151,6 +157,12 @@ import {
 // Import tool implementations
 import {
   listProjects,
+  getProject,
+  createProject,
+  updateProject,
+  archiveProject,
+  restoreProject,
+  listWorkflows,
   listTaskLists,
   listPeople,
   listBoards,
@@ -308,7 +320,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_task",
       description:
-        'Create a single task in Productive.io. Use this to create individual tasks with specific details. For creating multiple tasks at once, use productive_create_tasks_batch instead.\n\nIMPORTANT: Both project_id and task_list_id are REQUIRED. Use productive_list_task_lists to get valid task list IDs for a project.\n\nSupports custom fields:\n- task_type: Bug, Task, Feature, Question, Meeting, Test Case\n- priority: Highest, High, Medium, Low, Lowest\n- labels: Array of label strings\n- parent_task_id: ID of parent task (for creating sub-tasks)\n\nExample:\n{\n  "title": "Fix login bug on staging",\n  "description": "Users are unable to login after password reset",\n  "project_id": "1234",\n  "task_list_id": "5678",\n  "task_type": "Bug",\n  "priority": "High",\n  "due_date": "2025-11-20"\n}',
+        'Create a single task in Productive.io. Use this to create individual tasks with specific details. For creating multiple tasks at once, use productive_create_tasks_batch instead.\n\nIMPORTANT: Both project_id and task_list_id are REQUIRED. Use productive_list_task_lists to get valid task list IDs for a project.\n\nSupports custom fields:\n- task_type: Bug, Task, Feature, Question, Meeting, Test Case\n- priority: Highest, High, Medium, Low, Lowest\n- labels: Array of label strings\n- parent_task_id: ID of parent task (for creating sub-tasks)\n\nExample:\n{\n  "title": "Fix login bug on staging",\n  "description": "Users are unable to login after password reset",\n  "project_id": "1234",\n  "task_list_id": "5678",\n  "task_type": "Bug",\n  "priority": "High",\n  "due_date": "2025-11-20"\n}\n\nAlways confirm the target project with the user before creating tasks. Never repurpose an unrelated project.',
       inputSchema: {
         type: "object",
         properties: {
@@ -417,6 +429,171 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ["title", "project_id", "task_list_id"],
+      },
+    },
+    {
+      name: "productive_list_workflows",
+      description:
+        "List all workflows in the organisation. Workflows are required when creating a project — use this to find the workflow_id. The default workflow is typically listed first.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+    {
+      name: "productive_get_project",
+      description:
+        "Get detailed information about a single project, including its company, project manager, and workflow.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["project_id"],
+      },
+    },
+    {
+      name: "productive_create_project",
+      description:
+        "Create a new project. Requires name, project type, workflow, and project manager. Optionally link to a company (required for client projects). Use productive_list_workflows to find workflow IDs, productive_list_people to find person IDs for project manager. If this tool is unavailable, do NOT create resources under an existing project as a workaround — inform the user that the tool is missing.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Project name (required, max 200 characters)",
+          },
+          project_type_id: {
+            type: "number",
+            description:
+              "Project type ID (required). Use 1 for client projects, 2 for internal projects.",
+          },
+          workflow_id: {
+            type: "string",
+            description:
+              "Workflow ID (required). Use productive_list_workflows to find available workflow IDs.",
+          },
+          project_manager_id: {
+            type: "string",
+            description:
+              "Person ID of the project manager (required). Use productive_list_people to find person IDs.",
+          },
+          company_id: {
+            type: "string",
+            description:
+              "Company ID to link the project to a client (optional, but required for client projects). Use productive_list_companies to find company IDs.",
+          },
+          project_color_id: {
+            type: "number",
+            description: "Colour index for the project (optional, integer)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["name", "project_type_id", "workflow_id", "project_manager_id"],
+      },
+    },
+    {
+      name: "productive_update_project",
+      description:
+        "Update an existing project. Can change name, project type, colour, project manager, or company. Only provide fields you want to change.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID (required)",
+          },
+          name: {
+            type: "string",
+            description: "New project name (max 200 characters)",
+          },
+          project_type_id: {
+            type: "number",
+            description: "New project type ID",
+          },
+          project_color_id: {
+            type: "number",
+            description: "New colour index",
+          },
+          project_manager_id: {
+            type: "string",
+            description: "Person ID of the new project manager",
+          },
+          company_id: {
+            type: "string",
+            description: "Company ID to link or re-link the project to",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["project_id"],
+      },
+    },
+    {
+      name: "productive_archive_project",
+      description:
+        "Archive a project. Archived projects are hidden from default listings but can be restored later.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["project_id"],
+      },
+    },
+    {
+      name: "productive_restore_project",
+      description:
+        "Restore a previously archived project back to active status.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["project_id"],
       },
     },
     {
@@ -532,7 +709,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_task_list",
       description:
-        'Create a new task list within a project. If board_id is not provided, the first board in the project will be used automatically.\n\nExample:\n{\n  "project_id": "1234",\n  "name": "Sprint 1"\n}',
+        'Create a new task list within a project. If board_id is not provided, the first board in the project will be used automatically.\n\nExample:\n{\n  "project_id": "1234",\n  "name": "Sprint 1"\n}\n\nAlways confirm the target project with the user before creating task lists. Never repurpose an unrelated project.',
       inputSchema: {
         type: "object",
         properties: {
@@ -3571,6 +3748,48 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       // Project tools
+      case "productive_list_workflows": {
+        const validated = ListWorkflowsSchema.parse(args);
+        const result = await listWorkflows(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_get_project": {
+        const validated = GetProjectSchema.parse(args);
+        const result = await getProject(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_create_project": {
+        const validated = CreateProjectSchema.parse(args);
+        const result = await createProject(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_update_project": {
+        const validated = UpdateProjectSchema.parse(args);
+        const result = await updateProject(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_archive_project": {
+        const validated = ArchiveProjectSchema.parse(args);
+        const result = await archiveProject(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_restore_project": {
+        const validated = RestoreProjectSchema.parse(args);
+        const result = await restoreProject(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
       case "productive_list_projects": {
         const validated = ListProjectsSchema.parse(args);
         const result = await listProjects(client, validated);

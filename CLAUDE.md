@@ -6,6 +6,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 An MCP (Model Context Protocol) server that exposes 50+ tools for interacting with the Productive.io API. It runs over stdio transport and is consumed by Claude Desktop, Claude Code, and other MCP-compatible clients.
 
+## Safety Rules
+
+**Do No Harm:** Never modify, repurpose, or write data to existing production resources as a workaround for a missing tool. If a required tool does not exist, stop and tell the user. Do not improvise by using a different resource, project, or entity as a substitute. Ask the user how they want to proceed.
+
+**Sandbox First:** When testing or experimenting, always use the sandbox environment. Never create test data in production.
+
+**Confirm Before Creating:** Before creating any resource (project, task, budget, etc.), confirm the target location with the user. Never assume which project, list, or pipeline to use.
+
+### Tool Guardrails by Risk Category
+
+Every tool that writes data must include a guardrail statement in its MCP tool description. The guardrail is determined by the tool's risk category:
+
+**Create tools** — confirm target location before executing. Never repurpose an existing resource as a workaround for a missing create tool.
+Applies to: `create_project`, `create_task`, `create_tasks_batch`, `create_task_list`, `create_budget`, `create_deal`, `create_comment`, `create_deal_comment`, `create_page`, `create_service`, `create_service_type`, `create_contract`, `create_todo`, `create_task_dependency`, `create_revenue_distribution`, `generate_budget_from_deal`, `generate_contract`, `copy_deal`, `copy_task_list`
+
+Append to description: *"⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround."*
+
+**Destructive status tools** — confirm with user before executing. State what will change and that it may not be easily reversible.
+Applies to: `close_deal`, `close_budget`, `mark_budget_delivered`, `archive_project`, `archive_company`, `archive_task_list`, `archive_service_type`, `mark_as_duplicate`
+
+Append to description: *"⚠️ Confirm with the user before executing — this changes the resource's status and may not be easily reversible."*
+
+**Delete tools** — confirm with user before executing. State that deletion is permanent.
+Applies to: `delete_page`, `delete_comment`, `delete_todo`, `delete_task_list`, `delete_task_dependency`, `delete_revenue_distribution`
+
+Append to description: *"⚠️ Confirm with the user before deleting — this action is permanent and cannot be undone."*
+
+**Update tools** — verify the correct resource is targeted before modifying.
+Applies to: `update_task`, `update_deal`, `update_budget`, `update_project`, `update_company`, `update_contract`, `update_page`, `update_comment`, `update_service`, `update_service_type`, `update_todo`, `update_task_dependency`, `update_revenue_distribution`, `update_task_list`, `reposition_task_list`, `move_task_list`, `extend_revenue_distribution`
+
+Append to description: *"⚠️ Verify the correct resource is targeted before modifying."*
+
+**Batch tools** — extra caution. Confirm count and target before executing.
+Applies to: `create_tasks_batch`
+
+Append to description (in addition to Create guardrail): *"⚠️ BATCH OPERATION — confirm the number of items and target location before executing. Errors are multiplied."*
+
+**Read tools** — no guardrail needed.
+Applies to: all `list_*`, `get_*`, `search_*`, `audit_*`, `report_*` tools, and `switch_environment`, `get_environment`
+
 ## Commands
 
 ```bash
