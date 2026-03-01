@@ -9,14 +9,42 @@ An MCP (Model Context Protocol) server that exposes 50+ tools for interacting wi
 ## Commands
 
 ```bash
-npm run build    # TypeScript compilation (tsc) → dist/
-npm run dev      # Watch mode with tsx auto-reload
-npm start        # Run compiled server (dist/index.js)
-npm run setup    # Auto-discover Productive.io custom fields → productive.config.json
-npm run clean    # Remove dist/
+npm run build            # TypeScript compilation (tsc) → dist/
+npm run dev              # Watch mode with tsx auto-reload
+npm start                # Run compiled server (dist/index.js)
+npm run setup            # Auto-discover Productive.io custom fields → productive.config.json
+npm run clean            # Remove dist/
+npm test                 # Run all tests (unit + schema + integration)
+npm run test:unit        # Schema + unit tests only (fast, no sandbox needed)
+npm run test:integration # Integration tests against sandbox API
+npm run test:coverage    # Full suite with v8 coverage report
+npm run test:watch       # Vitest interactive watch mode
 ```
 
-There are no tests or linting configured in this project.
+## Testing
+
+Three-tier Vitest test pattern:
+
+1. **Schema tests** (`tests/schemas/`) — pure Zod validation, no network, no client
+2. **Unit tests** (`tests/unit/`) — mocked `ProductiveClient` via `tests/helpers/mock-client.ts`
+3. **Integration tests** (`tests/integration/`) — real Productive sandbox API; auto-skipped via `describe.skipIf(!HAS_SANDBOX)` when sandbox env vars are absent
+
+`vitest.config.ts` sets `testTimeout: 5000` globally and overrides to `30000` for `tests/integration/**` via the `projects` array (real API calls can be slow).
+
+### Sandbox environment variables
+
+Copy `.env.example` → `.env` and populate all of these to run integration tests:
+
+```
+PRODUCTIVE_SANDBOX_API_TOKEN     # API token for the sandbox org
+PRODUCTIVE_SANDBOX_ORG_ID        # Organisation ID
+PRODUCTIVE_SANDBOX_BASE_URL      # e.g. https://api-sandbox.productive.io/api/v2
+PRODUCTIVE_SANDBOX_DEAL_STATUS_ID  # A valid deal status ID in the sandbox
+PRODUCTIVE_SANDBOX_PERSON_ID     # A valid person ID (used as deal responsible)
+PRODUCTIVE_SANDBOX_COMPANY_ID    # A valid company ID
+PRODUCTIVE_SANDBOX_PROJECT_ID    # A valid project ID (e.g. "MCP Testing Project")
+PRODUCTIVE_SANDBOX_TASK_ID       # A valid task ID (e.g. "Default Test Task")
+```
 
 ## Architecture
 

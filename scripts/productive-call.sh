@@ -1,22 +1,47 @@
 #!/bin/bash
 # Productive MCP Tool Caller
 # Usage: productive-call.sh <tool_name> [json_arguments]
-# Example: productive-call.sh productive_list_projects
-# Example: productive-call.sh productive_search_tasks '{"query":"login bug","project_id":"760385"}'
+# Environment: Set PRODUCTIVE_ENV=sandbox to use sandbox credentials
+#
+# Examples:
+#   productive-call.sh productive_list_projects
+#   productive-call.sh productive_search_tasks '{"query":"login bug","project_id":"760385"}'
+#   PRODUCTIVE_ENV=sandbox productive-call.sh productive_list_deals '{"summary":true}'
 
 TOOL_NAME="$1"
 TOOL_ARGS="${2:-"{}"}"
 
 if [ -z "$TOOL_NAME" ]; then
   echo "Usage: productive-call.sh <tool_name> [json_arguments]"
+  echo "  Set PRODUCTIVE_ENV=sandbox to use sandbox credentials"
   exit 1
 fi
 
-export PRODUCTIVE_API_TOKEN="${PRODUCTIVE_API_TOKEN:-070a7556-9929-45d9-bbfe-302c704dcbcd}"
-export PRODUCTIVE_ORG_ID="${PRODUCTIVE_ORG_ID:-50165}"
-export PRODUCTIVE_BASE_URL="${PRODUCTIVE_BASE_URL:-https://api-sandbox.productive.io/api/v2}"
-
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Source .env file to pick up all env vars
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  set -a
+  source "$SCRIPT_DIR/.env"
+  set +a
+fi
+
+# Environment selection: sandbox or production
+if [ "$PRODUCTIVE_ENV" = "sandbox" ]; then
+  export PRODUCTIVE_API_TOKEN="${PRODUCTIVE_SANDBOX_API_TOKEN}"
+  export PRODUCTIVE_ORG_ID="${PRODUCTIVE_SANDBOX_ORG_ID}"
+  export PRODUCTIVE_BASE_URL="${PRODUCTIVE_SANDBOX_BASE_URL}"
+
+  if [ -z "$PRODUCTIVE_API_TOKEN" ] || [ -z "$PRODUCTIVE_ORG_ID" ] || [ -z "$PRODUCTIVE_BASE_URL" ]; then
+    echo "ERROR: Sandbox credentials not found in .env (need PRODUCTIVE_SANDBOX_API_TOKEN, PRODUCTIVE_SANDBOX_ORG_ID, PRODUCTIVE_SANDBOX_BASE_URL)"
+    exit 1
+  fi
+else
+  # Production defaults (fall back to hardcoded sandbox if no .env — legacy compat)
+  export PRODUCTIVE_API_TOKEN="${PRODUCTIVE_API_TOKEN:-070a7556-9929-45d9-bbfe-302c704dcbcd}"
+  export PRODUCTIVE_ORG_ID="${PRODUCTIVE_ORG_ID:-50165}"
+  export PRODUCTIVE_BASE_URL="${PRODUCTIVE_BASE_URL:-https://api.productive.io/api/v2}"
+fi
 
 export _MCP_TOOL_NAME="$TOOL_NAME"
 export _MCP_TOOL_ARGS="$TOOL_ARGS"
