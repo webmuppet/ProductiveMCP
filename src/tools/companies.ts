@@ -17,6 +17,7 @@ import {
   formatSingleCompanyMarkdown,
   formatResponse,
   truncateResponse,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 import {
   ListCompaniesSchema,
@@ -70,10 +71,20 @@ export async function listCompanies(
   ).map((c) => formatCompany(c as Company));
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
-  const result = formatResponse(companies, args.response_format, () =>
-    formatCompanyListMarkdown(companies, total),
-  );
+  const result = formatResponse(companies, args.response_format, () => {
+    const body = formatCompanyListMarkdown(companies, total);
+    const footer = formatPaginationFooter({
+      offset: args.offset,
+      limit: args.limit,
+      total_count: total ?? null,
+      total_pages: totalPages ?? null,
+      current_page: currentPage,
+    });
+    return footer ? `${body}\n${footer}` : body;
+  });
 
   return truncateResponse(result, args.response_format);
 }

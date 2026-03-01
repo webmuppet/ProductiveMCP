@@ -61,6 +61,7 @@ import type {
   Activity,
   ActivityAttributes,
   FormattedActivity,
+  FormattedActivityDetail,
   PipelineStageSummary,
   PipelineSummary,
   DealStatus,
@@ -1057,10 +1058,49 @@ export function truncateResponse(
   const truncated = content.substring(0, CHARACTER_LIMIT);
   const truncationMessage =
     format === "markdown"
-      ? "\n\n---\n**Response truncated.** Use `limit` and `offset` parameters to paginate through results."
-      : "\n\n[Response truncated. Use limit and offset parameters to paginate.]";
+      ? "\n\n---\n**Response truncated** — reduce `limit` or use `offset` to paginate through results."
+      : "\n\n[Response truncated — reduce limit or use offset to paginate.]";
 
   return truncated + truncationMessage;
+}
+
+// ─── Pagination utilities ─────────────────────────────────────────────────────
+
+export interface PaginationMeta {
+  offset: number;
+  limit: number;
+  total_count: number | null;
+  total_pages: number | null;
+  current_page: number;
+}
+
+/**
+ * Build a "Showing X–Y of Z" footer for paginated list responses.
+ * Returns an empty string when total_count is unknown or there is only one page.
+ */
+export function formatPaginationFooter(meta: PaginationMeta): string {
+  if (meta.total_count === null) return "";
+
+  const showingStart = meta.offset + 1;
+  const showingEnd = Math.min(meta.offset + meta.limit, meta.total_count);
+
+  // Single page — no footer needed
+  if (meta.total_count <= meta.limit && meta.offset === 0) return "";
+
+  const lines: string[] = [
+    "---",
+    `Showing ${showingStart}–${showingEnd} of ${meta.total_count} results`,
+  ];
+
+  if (meta.total_pages !== null && meta.total_pages > 1) {
+    lines.push(`Page ${meta.current_page} of ${meta.total_pages}`);
+  }
+
+  if (showingEnd < meta.total_count) {
+    lines.push(`*Use offset=${showingEnd} to see the next page*`);
+  }
+
+  return lines.join("\n");
 }
 
 /**
@@ -2260,6 +2300,21 @@ export function formatActivityMarkdown(activity: FormattedActivity): string {
   if (activity.creator_name) {
     lines.push(`  By: ${activity.creator_name}`);
   }
+
+  // Show hierarchy context for global feeds
+  const context = [activity.root_name, activity.parent_name]
+    .filter(Boolean)
+    .join(" › ");
+  if (context) {
+    lines.push(`  In: ${context}`);
+  }
+
+  if (activity.item_type && activity.item_name) {
+    lines.push(`  ${activity.item_type}: ${activity.item_name}`);
+  } else if (activity.item_name) {
+    lines.push(`  ${activity.item_name}`);
+  }
+
   if (activity.changeset_summary) {
     lines.push(`  ${activity.changeset_summary}`);
   }
@@ -2269,16 +2324,18 @@ export function formatActivityMarkdown(activity: FormattedActivity): string {
 
 /**
  * Format a list of activities as markdown.
+ * Accepts an optional title (default: "Activity Feed").
  */
 export function formatActivityListMarkdown(
   activities: FormattedActivity[],
   total?: number,
+  title: string = "Activity Feed",
 ): string {
   if (activities.length === 0) {
-    return "No activities found for this deal.";
+    return "No activities found.";
   }
 
-  const lines = ["# Deal Activity Feed", ""];
+  const lines = [`# ${title}`, ""];
 
   if (total !== undefined) {
     lines.push(`**Total**: ${total} activities`, "");
@@ -2287,6 +2344,74 @@ export function formatActivityListMarkdown(
   for (const activity of activities) {
     lines.push(formatActivityMarkdown(activity));
     lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a single activity with full detail for get_activity.
+ */
+export function formatSingleActivityMarkdown(
+  activity: FormattedActivityDetail,
+): string {
+  const date = new Date(activity.created_at).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const lines = [
+    `# Activity: ${activity.event}`,
+    "",
+    `**ID**: ${activity.id}`,
+    `**Event**: ${activity.event}`,
+    `**Date**: ${date}`,
+    `**By**: ${activity.creator_name ?? "—"}`,
+  ];
+
+  if (activity.root_name || activity.root_type) {
+    lines.push(`**Context**: ${activity.root_name ?? activity.root_type ?? "—"}`);
+  }
+  if (activity.parent_name || activity.parent_type) {
+    lines.push(`**Parent**: ${activity.parent_name ?? activity.parent_type ?? "—"}`);
+  }
+  if (activity.item_type || activity.item_name) {
+    lines.push(`**Item**: ${[activity.item_type, activity.item_name].filter(Boolean).join(": ")}`);
+  }
+
+  if (activity.made_by_automation) {
+    lines.push(`**Automated**: Yes`);
+  }
+
+  if (activity.changeset && activity.changeset.length > 0) {
+    lines.push("", "## Changes", "");
+    for (const change of activity.changeset) {
+      const field = Object.keys(change)[0];
+      const value = change[field];
+      if (Array.isArray(value) && value.length >= 2) {
+        lines.push(`- **${field}**: \`${value[0]}\` → \`${value[1]}\``);
+      } else {
+        lines.push(`- **${field}** changed`);
+      }
+    }
+  }
+
+  if (activity.comment_body) {
+    lines.push("", "## Comment", "", activity.comment_body);
+  }
+
+  if (activity.email_subject) {
+    lines.push("", `## Email: ${activity.email_subject}`);
+  }
+
+  if (activity.attachment_names.length > 0) {
+    lines.push("", "## Attachments", "");
+    for (const name of activity.attachment_names) {
+      lines.push(`- ${name}`);
+    }
   }
 
   return lines.join("\n");
@@ -2352,8 +2477,82 @@ export function formatActivity(
     changeset_summary: changesetSummary,
     item_name: attrs.item_name ?? null,
     item_type: attrs.item_type ?? null,
+    parent_name: attrs.parent_name ?? null,
+    root_name: attrs.root_name ?? null,
+    root_type: attrs.root_type ?? null,
     creator_name: creatorName,
     created_at: attrs.created_at,
+  };
+}
+
+/**
+ * Format a single activity with full included data (for get_activity).
+ */
+export function formatActivityDetail(
+  activity: Activity,
+  includedData?: unknown[],
+): FormattedActivityDetail {
+  const base = formatActivity(activity, includedData);
+  const attrs = activity.attributes as ActivityAttributes;
+
+  type IncludedItem = {
+    type: string;
+    id: string;
+    attributes?: Record<string, unknown>;
+  };
+  const included = (includedData ?? []) as IncludedItem[];
+
+  // Extract comment body from included
+  let commentBody: string | null = null;
+  const commentRel = (activity.relationships?.comment as { data?: { id: string } } | undefined);
+  if (commentRel?.data?.id) {
+    const comment = included.find(
+      (r) => r.type === "comments" && r.id === commentRel.data!.id,
+    );
+    if (comment?.attributes) {
+      commentBody = (comment.attributes.body as string | undefined) ?? null;
+    }
+  }
+
+  // Extract email subject from included
+  let emailSubject: string | null = null;
+  const emailRel = (activity.relationships?.email as { data?: { id: string } } | undefined);
+  if (emailRel?.data?.id) {
+    const email = included.find(
+      (r) => r.type === "emails" && r.id === emailRel.data!.id,
+    );
+    if (email?.attributes) {
+      emailSubject = (email.attributes.subject as string | undefined) ?? null;
+    }
+  }
+
+  // Extract attachment names
+  const attachmentNames: string[] = [];
+  const attachmentRels = activity.relationships?.attachments as
+    | { data?: Array<{ id: string }> }
+    | undefined;
+  if (attachmentRels?.data) {
+    for (const ref of attachmentRels.data) {
+      const att = included.find(
+        (r) => r.type === "attachments" && r.id === ref.id,
+      );
+      if (att?.attributes?.filename) {
+        attachmentNames.push(att.attributes.filename as string);
+      }
+    }
+  }
+
+  return {
+    ...base,
+    item_id: attrs.item_id ?? null,
+    parent_id: attrs.parent_id ?? null,
+    parent_type: attrs.parent_type ?? null,
+    root_id: attrs.root_id ?? null,
+    made_by_automation: attrs.made_by_automation ?? false,
+    changeset: attrs.changeset ?? null,
+    comment_body: commentBody,
+    email_subject: emailSubject,
+    attachment_names: attachmentNames,
   };
 }
 

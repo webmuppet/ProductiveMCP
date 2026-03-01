@@ -140,6 +140,12 @@ import {
   UpdateContractSchema,
   GenerateContractSchema,
 } from "./schemas/contract.js";
+import {
+  ListActivitiesSchema,
+  GetActivitySchema,
+  ListTaskActivitiesSchema,
+  ListProjectActivitiesSchema,
+} from "./schemas/activity.js";
 
 // Import tool implementations
 import {
@@ -254,6 +260,12 @@ import {
   updateContract,
   generateContract,
 } from "./tools/contracts.js";
+import {
+  listActivities,
+  getActivity,
+  listTaskActivities,
+  listProjectActivities,
+} from "./tools/activities.js";
 
 // Validate environment variables
 try {
@@ -2777,6 +2789,159 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
+    // Activity tools
+    {
+      name: "productive_list_activities",
+      description:
+        'List activities (comments, changesets, emails) across the workspace or filtered by entity.\n\nExample:\n{\n  "project_id": "123",\n  "activity_type": "comment",\n  "limit": 20\n}',
+      inputSchema: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Filter by deal ID" },
+          task_id: { type: "string", description: "Filter by task ID" },
+          project_id: { type: "string", description: "Filter by project ID" },
+          company_id: { type: "string", description: "Filter by company ID" },
+          person_id: { type: "string", description: "Filter by person ID" },
+          creator_id: { type: "string", description: "Filter by creator user ID" },
+          event: {
+            type: "string",
+            enum: ["create", "update", "edit", "delete", "copy"],
+            description: "Filter by event type",
+          },
+          activity_type: {
+            type: "string",
+            enum: ["comment", "changeset", "email"],
+            description: "Filter by activity type",
+          },
+          after: { type: "string", description: "Filter activities after this date (ISO 8601)" },
+          before: { type: "string", description: "Filter activities before this date (ISO 8601)" },
+          limit: {
+            type: "number",
+            description: "Number of results to return (1-100, default: 20)",
+            default: 20,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+      },
+    },
+    {
+      name: "productive_get_activity",
+      description:
+        'Get full details of a single activity by ID, including comments, emails, and attachments.\n\nExample:\n{\n  "activity_id": "456"\n}',
+      inputSchema: {
+        type: "object",
+        properties: {
+          activity_id: {
+            type: "string",
+            description: "Activity ID (required)",
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["activity_id"],
+      },
+    },
+    {
+      name: "productive_list_task_activities",
+      description:
+        'List the activity feed for a specific task (comments, status changes, etc.).\n\nExample:\n{\n  "task_id": "789",\n  "activity_type": "comment"\n}',
+      inputSchema: {
+        type: "object",
+        properties: {
+          task_id: {
+            type: "string",
+            description: "Task ID (required)",
+          },
+          event: {
+            type: "string",
+            enum: ["create", "update", "edit", "delete", "copy"],
+            description: "Filter by event type",
+          },
+          activity_type: {
+            type: "string",
+            enum: ["comment", "changeset", "email"],
+            description: "Filter by activity type",
+          },
+          after: { type: "string", description: "Filter activities after this date (ISO 8601)" },
+          before: { type: "string", description: "Filter activities before this date (ISO 8601)" },
+          limit: {
+            type: "number",
+            description: "Number of results to return (1-100, default: 20)",
+            default: 20,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["task_id"],
+      },
+    },
+    {
+      name: "productive_list_project_activities",
+      description:
+        'List the activity feed for a specific project.\n\nExample:\n{\n  "project_id": "123",\n  "limit": 50\n}',
+      inputSchema: {
+        type: "object",
+        properties: {
+          project_id: {
+            type: "string",
+            description: "Project ID (required)",
+          },
+          event: {
+            type: "string",
+            enum: ["create", "update", "edit", "delete", "copy"],
+            description: "Filter by event type",
+          },
+          activity_type: {
+            type: "string",
+            enum: ["comment", "changeset", "email"],
+            description: "Filter by activity type",
+          },
+          after: { type: "string", description: "Filter activities after this date (ISO 8601)" },
+          before: { type: "string", description: "Filter activities before this date (ISO 8601)" },
+          limit: {
+            type: "number",
+            description: "Number of results to return (1-100, default: 20)",
+            default: 20,
+          },
+          offset: {
+            type: "number",
+            description: "Offset for pagination (default: 0)",
+            default: 0,
+          },
+          response_format: {
+            type: "string",
+            enum: ["markdown", "json"],
+            description: "Response format (default: markdown)",
+            default: "markdown",
+          },
+        },
+        required: ["project_id"],
+      },
+    },
+
     // Revenue Distribution tools
     {
       name: "productive_list_revenue_distributions",
@@ -3893,6 +4058,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "productive_generate_contract": {
         const validated = GenerateContractSchema.parse(args);
         const result = await generateContract(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      // Activity tools
+      case "productive_list_activities": {
+        const validated = ListActivitiesSchema.parse(args);
+        const result = await listActivities(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_get_activity": {
+        const validated = GetActivitySchema.parse(args);
+        const result = await getActivity(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_list_task_activities": {
+        const validated = ListTaskActivitiesSchema.parse(args);
+        const result = await listTaskActivities(client, validated);
+        safeLog("[MCP Tool Success]", { tool: name });
+        return { content: [{ type: "text", text: result }] };
+      }
+
+      case "productive_list_project_activities": {
+        const validated = ListProjectActivitiesSchema.parse(args);
+        const result = await listProjectActivities(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
         return { content: [{ type: "text", text: result }] };
       }

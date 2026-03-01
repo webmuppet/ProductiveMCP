@@ -24,6 +24,7 @@ import {
   formatSingleServiceTypeMarkdown,
   formatResponse,
   truncateResponse,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 import {
   ListServicesSchema,
@@ -97,10 +98,20 @@ export async function listServices(
   ).map((service) => formatService(service as Service, response.included));
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
-  const result = formatResponse(services, args.response_format, () =>
-    formatServiceListMarkdown(services, total),
-  );
+  const result = formatResponse(services, args.response_format, () => {
+    const body = formatServiceListMarkdown(services, total);
+    const footer = formatPaginationFooter({
+      offset: args.offset,
+      limit: args.limit,
+      total_count: total ?? null,
+      total_pages: totalPages ?? null,
+      current_page: currentPage,
+    });
+    return footer ? `${body}\n${footer}` : body;
+  });
 
   return truncateResponse(result, args.response_format);
 }
@@ -327,10 +338,20 @@ export async function listServiceTypes(
   ).map((st) => formatServiceType(st as ServiceType));
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
-  const result = formatResponse(serviceTypes, args.response_format, () =>
-    formatServiceTypeListMarkdown(serviceTypes, total),
-  );
+  const result = formatResponse(serviceTypes, args.response_format, () => {
+    const body = formatServiceTypeListMarkdown(serviceTypes, total);
+    const footer = formatPaginationFooter({
+      offset: args.offset,
+      limit: args.limit,
+      total_count: total ?? null,
+      total_pages: totalPages ?? null,
+      current_page: currentPage,
+    });
+    return footer ? `${body}\n${footer}` : body;
+  });
 
   return truncateResponse(result, args.response_format);
 }

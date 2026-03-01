@@ -10,6 +10,7 @@ import {
   formatTask,
   formatResponse,
   truncateResponse,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 
 /**
@@ -96,6 +97,8 @@ export async function listSubtasks(
     );
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
   const result = formatResponse(
     {
@@ -105,7 +108,17 @@ export async function listSubtasks(
       parent_task_id: args.parent_task_id,
     },
     args.response_format,
-    () => formatSubtasksMarkdown(subtasks, args.parent_task_id, total),
+    () => {
+      const body = formatSubtasksMarkdown(subtasks, args.parent_task_id, total);
+      const footer = formatPaginationFooter({
+        offset: args.offset,
+        limit: args.limit,
+        total_count: total ?? null,
+        total_pages: totalPages ?? null,
+        current_page: currentPage,
+      });
+      return footer ? `${body}\n${footer}` : body;
+    },
   );
 
   return truncateResponse(result, args.response_format);

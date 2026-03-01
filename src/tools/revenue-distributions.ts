@@ -21,6 +21,7 @@ import {
   formatOverdueDistributionsMarkdown,
   formatResponse,
   truncateResponse,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 import {
   ListRevenueDistributionsSchema,
@@ -64,10 +65,20 @@ export async function listRevenueDistributions(
   );
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
-  const result = formatResponse(distributions, args.response_format, () =>
-    formatRevenueDistributionListMarkdown(distributions, total),
-  );
+  const result = formatResponse(distributions, args.response_format, () => {
+    const body = formatRevenueDistributionListMarkdown(distributions, total);
+    const footer = formatPaginationFooter({
+      offset: args.offset,
+      limit: args.limit,
+      total_count: total ?? null,
+      total_pages: totalPages ?? null,
+      current_page: currentPage,
+    });
+    return footer ? `${body}\n${footer}` : body;
+  });
 
   return truncateResponse(result, args.response_format);
 }

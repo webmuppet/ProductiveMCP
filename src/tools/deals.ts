@@ -33,6 +33,7 @@ import {
   formatResponse,
   truncateResponse,
   markdownToHtml,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 import {
   ListDealsSchema,
@@ -300,10 +301,20 @@ export async function listDeals(
   );
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
-  const result = formatResponse(deals, args.response_format, () =>
-    formatDealListMarkdown(deals, total),
-  );
+  const result = formatResponse(deals, args.response_format, () => {
+    const body = formatDealListMarkdown(deals, total);
+    const footer = formatPaginationFooter({
+      offset: args.offset,
+      limit: args.limit,
+      total_count: total ?? null,
+      total_pages: totalPages ?? null,
+      current_page: currentPage,
+    });
+    return footer ? `${body}\n${footer}` : body;
+  });
 
   return truncateResponse(result, args.response_format);
 }
@@ -666,6 +677,8 @@ export async function listDealComments(
     .map((a) => String(a.attributes.item_id));
 
   const total = activityResponse.meta?.total_count;
+  const totalPages = activityResponse.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
   if (commentIds.length === 0) {
     const result = formatResponse(
@@ -693,7 +706,17 @@ export async function listDealComments(
   const result = formatResponse(
     { comments, total, count: comments.length },
     args.response_format,
-    () => formatDealCommentsMarkdown(comments, total),
+    () => {
+      const body = formatDealCommentsMarkdown(comments, total);
+      const footer = formatPaginationFooter({
+        offset: args.offset,
+        limit: args.limit,
+        total_count: total ?? null,
+        total_pages: totalPages ?? null,
+        current_page: currentPage,
+      });
+      return footer ? `${body}\n${footer}` : body;
+    },
   );
 
   return truncateResponse(result, args.response_format);
@@ -769,11 +792,23 @@ export async function listDealActivities(
     );
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
   const result = formatResponse(
     { activities, total, count: activities.length },
     args.response_format,
-    () => formatActivityListMarkdown(activities, total),
+    () => {
+      const body = formatActivityListMarkdown(activities, total, "Deal Activity Feed");
+      const footer = formatPaginationFooter({
+        offset: args.offset,
+        limit: args.limit,
+        total_count: total ?? null,
+        total_pages: totalPages ?? null,
+        current_page: currentPage,
+      });
+      return footer ? `${body}\n${footer}` : body;
+    },
   );
 
   return truncateResponse(result, args.response_format);

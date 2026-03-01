@@ -19,6 +19,7 @@ import {
   formatResponse,
   truncateResponse,
   markdownToHtml,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 import {
   CreateTaskSchema,
@@ -296,11 +297,23 @@ export async function searchTasks(
   );
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
   const result = formatResponse(
     { tasks, total, count: tasks.length },
     args.response_format,
-    () => formatTaskListMarkdown(tasks, total),
+    () => {
+      const body = formatTaskListMarkdown(tasks, total);
+      const footer = formatPaginationFooter({
+        offset: args.offset,
+        limit: args.limit,
+        total_count: total ?? null,
+        total_pages: totalPages ?? null,
+        current_page: currentPage,
+      });
+      return footer ? `${body}\n${footer}` : body;
+    },
   );
 
   return truncateResponse(result, args.response_format);

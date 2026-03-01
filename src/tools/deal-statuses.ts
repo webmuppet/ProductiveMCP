@@ -11,6 +11,7 @@ import {
   formatSingleDealStatusMarkdown,
   formatResponse,
   truncateResponse,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 import {
   ListDealStatusesSchema,
@@ -41,10 +42,20 @@ export async function listDealStatuses(
   ).map((s) => formatDealStatus(s as DealStatus, response.included));
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
-  const result = formatResponse(statuses, args.response_format, () =>
-    formatDealStatusListMarkdown(statuses, total),
-  );
+  const result = formatResponse(statuses, args.response_format, () => {
+    const body = formatDealStatusListMarkdown(statuses, total);
+    const footer = formatPaginationFooter({
+      offset: args.offset,
+      limit: args.limit,
+      total_count: total ?? null,
+      total_pages: totalPages ?? null,
+      current_page: currentPage,
+    });
+    return footer ? `${body}\n${footer}` : body;
+  });
 
   return truncateResponse(result, args.response_format);
 }

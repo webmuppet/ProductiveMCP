@@ -1012,6 +1012,12 @@ export interface ActivityAttributes {
   item_id: string | null;
   item_type: string | null;
   item_name: string | null;
+  parent_id: string | null;
+  parent_type: string | null;
+  parent_name: string | null;
+  root_id: string | null;
+  root_type: string | null;
+  root_name: string | null;
   created_at: string;
   deal_id: string | null;
   made_by_automation: boolean;
@@ -1028,8 +1034,23 @@ export interface FormattedActivity {
   changeset_summary: string | null;
   item_name: string | null;
   item_type: string | null;
+  parent_name: string | null;
+  root_name: string | null;
+  root_type: string | null;
   creator_name: string | null;
   created_at: string;
+}
+
+export interface FormattedActivityDetail extends FormattedActivity {
+  item_id: string | null;
+  parent_id: string | null;
+  parent_type: string | null;
+  root_id: string | null;
+  made_by_automation: boolean;
+  changeset: Array<Record<string, unknown>> | null;
+  comment_body: string | null;
+  email_subject: string | null;
+  attachment_names: string[];
 }
 
 // ─── Pipeline summary types ───────────────────────────────────────────────────

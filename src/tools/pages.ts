@@ -17,6 +17,7 @@ import {
   formatResponse,
   truncateResponse,
   markdownToProductiveDocString,
+  formatPaginationFooter,
 } from "../utils/formatting.js";
 import {
   ListPagesSchema,
@@ -260,11 +261,23 @@ export async function listPages(
   );
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
   const result = formatResponse(
     { pages, total, count: pages.length },
     args.response_format,
-    () => formatPageListMarkdown(pages, total),
+    () => {
+      const body = formatPageListMarkdown(pages, total);
+      const footer = formatPaginationFooter({
+        offset: args.offset,
+        limit: args.limit,
+        total_count: total ?? null,
+        total_pages: totalPages ?? null,
+        current_page: currentPage,
+      });
+      return footer ? `${body}\n${footer}` : body;
+    },
   );
 
   return truncateResponse(result, args.response_format);
@@ -471,11 +484,23 @@ export async function searchPages(
   );
 
   const total = response.meta?.total_count;
+  const totalPages = response.meta?.total_pages as number | undefined;
+  const currentPage = pageNumber;
 
   const result = formatResponse(
     { pages, total, count: pages.length },
     args.response_format,
-    () => formatPageListMarkdown(pages, total),
+    () => {
+      const body = formatPageListMarkdown(pages, total);
+      const footer = formatPaginationFooter({
+        offset: args.offset,
+        limit: args.limit,
+        total_count: total ?? null,
+        total_pages: totalPages ?? null,
+        current_page: currentPage,
+      });
+      return footer ? `${body}\n${footer}` : body;
+    },
   );
 
   return truncateResponse(result, args.response_format);
