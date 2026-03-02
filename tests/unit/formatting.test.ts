@@ -9,6 +9,8 @@ import {
   markdownToProductiveDoc,
   formatResponse,
   truncateResponse,
+  environmentTag,
+  wrapWriteResponse,
 } from '../../src/utils/formatting.js';
 
 // ─── markdownToHtml ───────────────────────────────────────────────────────────
@@ -149,5 +151,45 @@ describe('truncateResponse', () => {
     const long = 'x'.repeat(26_000);
     const result = truncateResponse(long, 'json');
     expect(result.length).toBeLessThan(long.length);
+  });
+});
+
+// ─── environmentTag ───────────────────────────────────────────────────────────
+
+describe('environmentTag', () => {
+  it('returns sandbox tag for "sandbox"', () => {
+    expect(environmentTag('sandbox')).toBe('🏖️ **[SANDBOX]**');
+  });
+
+  it('returns production tag for "production"', () => {
+    expect(environmentTag('production')).toBe('🔴 **[PRODUCTION]**');
+  });
+});
+
+// ─── wrapWriteResponse ────────────────────────────────────────────────────────
+
+describe('wrapWriteResponse', () => {
+  it('returns CallToolResult with sandbox tag as first line', () => {
+    const result = wrapWriteResponse('Created task #123', 'sandbox');
+    expect(result.content).toHaveLength(1);
+    const text = (result.content[0] as { type: string; text: string }).text;
+    expect(text.startsWith('🏖️ **[SANDBOX]**')).toBe(true);
+  });
+
+  it('returns CallToolResult with production tag as first line', () => {
+    const result = wrapWriteResponse('Updated deal #456', 'production');
+    const text = (result.content[0] as { type: string; text: string }).text;
+    expect(text.startsWith('🔴 **[PRODUCTION]**')).toBe(true);
+  });
+
+  it('includes the original result text after a blank line', () => {
+    const result = wrapWriteResponse('Task created.', 'sandbox');
+    const text = (result.content[0] as { type: string; text: string }).text;
+    expect(text).toContain('\n\nTask created.');
+  });
+
+  it('content[0].type is "text"', () => {
+    const result = wrapWriteResponse('Done', 'production');
+    expect(result.content[0].type).toBe('text');
   });
 });

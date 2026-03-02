@@ -14,6 +14,8 @@ An MCP (Model Context Protocol) server that exposes 50+ tools for interacting wi
 
 **Confirm Before Creating:** Before creating any resource (project, task, budget, etc.), confirm the target location with the user. Never assume which project, list, or pipeline to use.
 
+**Environment Awareness:** Every write tool response includes an environment tag ([PRODUCTION] or [SANDBOX]). If the tag shows an unexpected environment, stop immediately and alert the user before proceeding.
+
 ### Tool Guardrails by Risk Category
 
 Every tool that writes data must include a guardrail statement in its MCP tool description. The guardrail is determined by the tool's risk category:
@@ -24,7 +26,7 @@ Applies to: `create_project`, `create_task`, `create_tasks_batch`, `create_task_
 Append to description: *"⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround."*
 
 **Destructive status tools** — confirm with user before executing. State what will change and that it may not be easily reversible.
-Applies to: `close_deal`, `close_budget`, `mark_budget_delivered`, `archive_project`, `archive_company`, `archive_task_list`, `archive_service_type`, `mark_as_duplicate`
+Applies to: `close_deal`, `close_budget`, `mark_budget_delivered`, `archive_project`, `archive_company`, `archive_task_list`, `archive_service_type`, `mark_as_duplicate`, `restore_project`, `restore_task_list`
 
 Append to description: *"⚠️ Confirm with the user before executing — this changes the resource's status and may not be easily reversible."*
 

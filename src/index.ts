@@ -15,6 +15,7 @@ import {
 import { ProductiveClient } from "./client.js";
 import { validateEnvironment } from "./utils/errors.js";
 import { TASK_TYPES, PRIORITIES, WORKFLOW_STATUSES } from "./constants.js";
+import { wrapWriteResponse } from "./utils/formatting.js";
 
 // Import schemas
 import {
@@ -3697,7 +3698,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_switch_environment",
       description:
-        "Switch between Production and Sandbox Productive.io environments. All subsequent tool calls will use the selected environment's API token, org ID, and base URL. Defaults to production on server startup.\n\nRequires sandbox environment variables to be configured:\n- PRODUCTIVE_SANDBOX_API_TOKEN\n- PRODUCTIVE_SANDBOX_ORG_ID\n- PRODUCTIVE_SANDBOX_BASE_URL",
+        "Switch between Production and Sandbox environments. In long-lived MCP servers (Claude Code, Claude Desktop), this persists for the session. In short-lived contexts (Cowork, one-shot scripts), this has NO effect — use the PRODUCTIVE_ENV=sandbox environment variable instead.\n\nRequires sandbox environment variables:\n- PRODUCTIVE_SANDBOX_API_TOKEN\n- PRODUCTIVE_SANDBOX_ORG_ID\n- PRODUCTIVE_SANDBOX_BASE_URL",
       inputSchema: {
         type: "object",
         properties: {
@@ -3713,7 +3714,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_get_environment",
       description:
-        "Returns the currently active Productive.io environment (production or sandbox).",
+        "Returns the currently active environment (production or sandbox). Note: In short-lived MCP contexts (Cowork), this always reports the default startup environment, which may not reflect the actual target if PRODUCTIVE_ENV was used to override credentials.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -3766,28 +3767,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateProjectSchema.parse(args);
         const result = await createProject(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_project": {
         const validated = UpdateProjectSchema.parse(args);
         const result = await updateProject(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_archive_project": {
         const validated = ArchiveProjectSchema.parse(args);
         const result = await archiveProject(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_restore_project": {
         const validated = RestoreProjectSchema.parse(args);
         const result = await restoreProject(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_list_projects": {
@@ -3831,56 +3832,56 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateTaskListSchema.parse(args);
         const result = await createTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_task_list": {
         const validated = UpdateTaskListSchema.parse(args);
         const result = await updateTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_archive_task_list": {
         const validated = ArchiveTaskListSchema.parse(args);
         const result = await archiveTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_restore_task_list": {
         const validated = RestoreTaskListSchema.parse(args);
         const result = await restoreTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_delete_task_list": {
         const validated = DeleteTaskListSchema.parse(args);
         const result = await deleteTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_reposition_task_list": {
         const validated = RepositionTaskListSchema.parse(args);
         const result = await repositionTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_move_task_list": {
         const validated = MoveTaskListSchema.parse(args);
         const result = await moveTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_copy_task_list": {
         const validated = CopyTaskListSchema.parse(args);
         const result = await copyTaskList(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Task tools
@@ -3888,7 +3889,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateTaskSchema.parse(args);
         const result = await createTask(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_search_tasks": {
@@ -3909,7 +3910,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = UpdateTaskSchema.parse(args);
         const result = await updateTask(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Todo tools
@@ -3917,7 +3918,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateTodoSchema.parse(args);
         const result = await createTodo(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_list_todos": {
@@ -3938,14 +3939,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = UpdateTodoSchema.parse(args);
         const result = await updateTodo(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_delete_todo": {
         const validated = DeleteTodoSchema.parse(args);
         const result = await deleteTodo(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Page tools
@@ -3967,21 +3968,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreatePageSchema.parse(args);
         const result = await createPage(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_page": {
         const validated = UpdatePageSchema.parse(args);
         const result = await updatePage(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_delete_page": {
         const validated = DeletePageSchema.parse(args);
         const result = await deletePage(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_search_pages": {
@@ -3996,7 +3997,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateTasksBatchSchema.parse(args);
         const result = await createTasksBatch(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Task dependency tools
@@ -4004,7 +4005,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateTaskDependencySchema.parse(args);
         const result = await createTaskDependency(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_list_task_dependencies": {
@@ -4025,14 +4026,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = UpdateTaskDependencySchema.parse(args);
         const result = await updateTaskDependency(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_delete_task_dependency": {
         const validated = DeleteTaskDependencySchema.parse(args);
         const result = await deleteTaskDependency(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Workflow helper tools
@@ -4040,14 +4041,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = MarkAsBlockedBySchema.parse(args);
         const result = await markAsBlockedBy(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_mark_as_duplicate": {
         const validated = MarkAsDuplicateSchema.parse(args);
         const result = await markAsDuplicate(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Attachment tools
@@ -4062,7 +4063,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = UploadAttachmentSchema.parse(args);
         const result = await uploadAttachment(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Comment tools
@@ -4077,7 +4078,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateCommentSchema.parse(args);
         const result = await createComment(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_get_comment": {
@@ -4091,14 +4092,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = UpdateCommentSchema.parse(args);
         const result = await updateComment(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_delete_comment": {
         const validated = DeleteCommentSchema.parse(args);
         const result = await deleteComment(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Sub-task tools
@@ -4114,7 +4115,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateBudgetSchema.parse(args);
         const result = await createBudget(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_list_budgets": {
@@ -4135,21 +4136,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = UpdateBudgetSchema.parse(args);
         const result = await updateBudget(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_mark_budget_delivered": {
         const validated = MarkBudgetDeliveredSchema.parse(args);
         const result = await markBudgetDelivered(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_close_budget": {
         const validated = CloseBudgetSchema.parse(args);
         const result = await closeBudget(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_audit_project_budgets": {
@@ -4178,35 +4179,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateDealSchema.parse(args);
         const result = await createDeal(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_deal": {
         const validated = UpdateDealSchema.parse(args);
         const result = await updateDeal(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_close_deal": {
         const validated = CloseDealSchema.parse(args);
         const result = await closeDeal(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_generate_budget_from_deal": {
         const validated = GenerateBudgetFromDealSchema.parse(args);
         const result = await generateBudgetFromDeal(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_copy_deal": {
         const validated = CopyDealSchema.parse(args);
         const result = await copyDeal(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_list_deal_comments": {
@@ -4220,7 +4221,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateDealCommentSchema.parse(args);
         const result = await createDealComment(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_list_deal_activities": {
@@ -4279,21 +4280,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateCompanySchema.parse(args);
         const result = await createCompany(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_company": {
         const validated = UpdateCompanySchema.parse(args);
         const result = await updateCompany(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_archive_company": {
         const validated = ArchiveCompanySchema.parse(args);
         const result = await archiveCompany(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Lost Reason tools
@@ -4323,21 +4324,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateContractSchema.parse(args);
         const result = await createContract(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_contract": {
         const validated = UpdateContractSchema.parse(args);
         const result = await updateContract(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_generate_contract": {
         const validated = GenerateContractSchema.parse(args);
         const result = await generateContract(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Activity tools
@@ -4388,28 +4389,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateRevenueDistributionSchema.parse(args);
         const result = await createRevenueDistribution(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_revenue_distribution": {
         const validated = UpdateRevenueDistributionSchema.parse(args);
         const result = await updateRevenueDistribution(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_delete_revenue_distribution": {
         const validated = DeleteRevenueDistributionSchema.parse(args);
         const result = await deleteRevenueDistribution(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_extend_revenue_distribution": {
         const validated = ExtendRevenueDistributionSchema.parse(args);
         const result = await extendRevenueDistribution(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_report_overdue_distributions": {
@@ -4438,14 +4439,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateServiceSchema.parse(args);
         const result = await createService(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_service": {
         const validated = UpdateServiceSchema.parse(args);
         const result = await updateService(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       // Service Type tools
@@ -4467,21 +4468,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const validated = CreateServiceTypeSchema.parse(args);
         const result = await createServiceType(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_update_service_type": {
         const validated = UpdateServiceTypeSchema.parse(args);
         const result = await updateServiceType(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_archive_service_type": {
         const validated = ArchiveServiceTypeSchema.parse(args);
         const result = await archiveServiceType(client, validated);
         safeLog("[MCP Tool Success]", { tool: name });
-        return { content: [{ type: "text", text: result }] };
+        return wrapWriteResponse(result, currentEnvironment);
       }
 
       case "productive_switch_environment": {

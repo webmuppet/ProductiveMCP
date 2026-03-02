@@ -3,6 +3,7 @@
  */
 
 import { marked, Token, Tokens } from "marked";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Configure marked once at module initialisation (it is a global singleton).
 // Setting options inside markdownToHtml on every call would repeatedly mutate
@@ -3046,4 +3047,34 @@ export function formatSingleContractMarkdown(
     `**Use Rollover Hours**: ${contract.use_rollover_hours}`,
     `**Created**: ${new Date(contract.created_at).toLocaleDateString()}`,
   ].join("\n");
+}
+
+// ─── Environment safety helpers ───────────────────────────────────────────────
+
+/**
+ * Returns a visible environment tag for write operation responses.
+ * Always shows for both environments as a safety reminder.
+ */
+export function environmentTag(environment: "production" | "sandbox"): string {
+  if (environment === "sandbox") {
+    return "🏖️ **[SANDBOX]**";
+  }
+  return "🔴 **[PRODUCTION]**";
+}
+
+/**
+ * Wraps a write tool's result string with the environment tag as the first line.
+ * No format parameter — the tag is always a markdown line prepended to the text
+ * content, regardless of whether the body is markdown or JSON.
+ */
+export function wrapWriteResponse(
+  result: string,
+  environment: "production" | "sandbox",
+): CallToolResult {
+  return {
+    content: [{
+      type: "text",
+      text: `${environmentTag(environment)}\n\n${result}`,
+    }],
+  };
 }
