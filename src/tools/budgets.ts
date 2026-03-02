@@ -276,6 +276,24 @@ export async function closeBudget(
 }
 
 /**
+ * Fetch the first available deal status to use as a default for budget creation.
+ * Productive stores budgets as a deal type internally and requires a deal_status_id
+ * even though standalone budgets don't have a meaningful pipeline stage.
+ */
+async function getDefaultBudgetStatusId(client: ProductiveClient): Promise<string> {
+  const response = await client.get<JSONAPIResponse>("/deal_statuses", {
+    "page[size]": 1,
+  });
+  const statuses = Array.isArray(response.data) ? response.data : [response.data];
+  if (statuses.length === 0 || !statuses[0]?.id) {
+    throw new Error(
+      "No deal statuses found. Please provide a deal_status_id explicitly.",
+    );
+  }
+  return statuses[0].id;
+}
+
+/**
  * Create a new standalone budget.
  */
 export async function createBudget(
@@ -304,25 +322,31 @@ export async function createBudget(
     payload.data.attributes.purchase_order_number = args.purchase_order_number;
   }
 
-  // Relationships — only add block if at least one rel is present
-  if (args.project_id || args.company_id || args.responsible_id) {
-    payload.data.relationships = {};
+  // deal_status is required by the API even for standalone budgets.
+  // Use an explicit override if provided, otherwise auto-fetch the first available status.
+  const dealStatusId =
+    args.deal_status_id ?? (await getDefaultBudgetStatusId(client));
 
-    if (args.project_id) {
-      payload.data.relationships.project = {
-        data: { type: "projects", id: args.project_id },
-      };
-    }
-    if (args.company_id) {
-      payload.data.relationships.company = {
-        data: { type: "companies", id: args.company_id },
-      };
-    }
-    if (args.responsible_id) {
-      payload.data.relationships.responsible = {
-        data: { type: "people", id: args.responsible_id },
-      };
-    }
+  payload.data.relationships = {
+    deal_status: {
+      data: { type: "deal_statuses", id: dealStatusId },
+    },
+  };
+
+  if (args.project_id) {
+    payload.data.relationships.project = {
+      data: { type: "projects", id: args.project_id },
+    };
+  }
+  if (args.company_id) {
+    payload.data.relationships.company = {
+      data: { type: "companies", id: args.company_id },
+    };
+  }
+  if (args.responsible_id) {
+    payload.data.relationships.responsible = {
+      data: { type: "people", id: args.responsible_id },
+    };
   }
 
   const response = await client.post<JSONAPIResponse>("/deals", payload, {

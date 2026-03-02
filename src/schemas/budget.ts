@@ -102,6 +102,7 @@ export const CreateBudgetSchema = z
     project_id: z.string().optional(),
     company_id: z.string().optional(),
     responsible_id: z.string().optional(),
+    deal_status_id: z.string().optional(),
     response_format: ResponseFormatSchema,
   })
   .strict();

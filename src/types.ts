@@ -672,6 +672,7 @@ export interface CreateBudgetPayload {
       purchase_order_number?: string | null;
     };
     relationships?: {
+      deal_status?: { data: { type: "deal_statuses"; id: string } };
       project?: { data: { type: "projects"; id: string } };
       company?: { data: { type: "companies"; id: string } };
       responsible?: { data: { type: "people"; id: string } };

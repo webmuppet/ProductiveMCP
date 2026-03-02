@@ -130,6 +130,17 @@ function extractErrorMessage(data: unknown): string {
 }
 
 /**
+ * Detect the active environment from env vars at startup.
+ * Handles per-call process models (e.g. Cowork) where switch_environment
+ * never runs — PRODUCTIVE_ENV or a sandbox base URL are the only signals.
+ */
+export function detectStartupEnvironment(): "production" | "sandbox" {
+  if (process.env.PRODUCTIVE_ENV === "sandbox") return "sandbox";
+  if ((process.env.PRODUCTIVE_BASE_URL ?? "").includes("sandbox")) return "sandbox";
+  return "production";
+}
+
+/**
  * Validate required environment variables
  */
 export function validateEnvironment(): void {

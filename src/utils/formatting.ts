@@ -2487,7 +2487,7 @@ export function formatSingleActivityMarkdown(
       const field = Object.keys(change)[0];
       const value = change[field];
       if (Array.isArray(value) && value.length >= 2) {
-        lines.push(`- **${field}**: \`${value[0]}\` → \`${value[1]}\``);
+        lines.push(`- **${field}**: \`${changeValueToString(value[0])}\` → \`${changeValueToString(value[1])}\``);
       } else {
         lines.push(`- **${field}** changed`);
       }
@@ -2558,7 +2558,7 @@ export function formatActivity(
         const field = Object.keys(change)[0];
         const value = change[field];
         if (Array.isArray(value) && value.length >= 2) {
-          return `${field}: "${value[0]}" → "${value[1]}"`;
+          return `${field}: "${changeValueToString(value[0])}" → "${changeValueToString(value[1])}"`;
         }
         return `${field} changed`;
       })
@@ -2909,19 +2909,13 @@ export function formatSingleCompanyMarkdown(company: FormattedCompany): string {
   }
 
   if (company.last_activity_at) {
-    lines.push(
-      `**Last Activity**: ${new Date(company.last_activity_at).toLocaleDateString()}`,
-    );
+    lines.push(`**Last Activity**: ${safeFormatDate(company.last_activity_at)}`);
   }
 
-  lines.push(
-    `**Created**: ${new Date(company.created_at).toLocaleDateString()}`,
-  );
+  lines.push(`**Created**: ${safeFormatDate(company.created_at)}`);
 
   if (company.archived_at) {
-    lines.push(
-      `**Archived**: ${new Date(company.archived_at).toLocaleDateString()}`,
-    );
+    lines.push(`**Archived**: ${safeFormatDate(company.archived_at)}`);
   }
 
   return lines.join("\n");
@@ -3045,8 +3039,36 @@ export function formatSingleContractMarkdown(
     `**Copy PO Number**: ${contract.copy_purchase_order_number}`,
     `**Copy Expenses**: ${contract.copy_expenses}`,
     `**Use Rollover Hours**: ${contract.use_rollover_hours}`,
-    `**Created**: ${new Date(contract.created_at).toLocaleDateString()}`,
+    `**Created**: ${safeFormatDate(contract.created_at)}`,
   ].join("\n");
+}
+
+// ─── Shared low-level helpers ─────────────────────────────────────────────────
+
+/**
+ * Safely stringify a changeset value for display.
+ * Template literals call .toString() which produces "[object Object]" for plain
+ * objects — this guard serialises objects to JSON instead.
+ */
+export function changeValueToString(val: unknown): string {
+  if (val === null || val === undefined) return "(empty)";
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
+}
+
+/**
+ * Safely format a date string for display. Returns "—" for missing, null,
+ * or unparseable dates instead of "Invalid Date".
+ */
+export function safeFormatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ─── Environment safety helpers ───────────────────────────────────────────────

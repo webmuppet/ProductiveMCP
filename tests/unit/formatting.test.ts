@@ -11,6 +11,8 @@ import {
   truncateResponse,
   environmentTag,
   wrapWriteResponse,
+  changeValueToString,
+  safeFormatDate,
 } from '../../src/utils/formatting.js';
 
 // ─── markdownToHtml ───────────────────────────────────────────────────────────
@@ -191,5 +193,59 @@ describe('wrapWriteResponse', () => {
   it('content[0].type is "text"', () => {
     const result = wrapWriteResponse('Done', 'production');
     expect(result.content[0].type).toBe('text');
+  });
+});
+
+// ─── changeValueToString ──────────────────────────────────────────────────────
+
+describe('changeValueToString', () => {
+  it('returns "(empty)" for null', () => {
+    expect(changeValueToString(null)).toBe('(empty)');
+  });
+
+  it('returns "(empty)" for undefined', () => {
+    expect(changeValueToString(undefined)).toBe('(empty)');
+  });
+
+  it('returns the string for string input', () => {
+    expect(changeValueToString('hello')).toBe('hello');
+  });
+
+  it('returns JSON string for plain object (not [object Object])', () => {
+    const obj = { id: '123', type: 'deal_statuses' };
+    const result = changeValueToString(obj);
+    expect(result).toBe(JSON.stringify(obj));
+    expect(result).not.toContain('[object Object]');
+  });
+
+  it('returns string for number input', () => {
+    expect(changeValueToString(42)).toBe('42');
+  });
+});
+
+// ─── safeFormatDate ───────────────────────────────────────────────────────────
+
+describe('safeFormatDate', () => {
+  it('returns "—" for undefined', () => {
+    expect(safeFormatDate(undefined)).toBe('—');
+  });
+
+  it('returns "—" for null', () => {
+    expect(safeFormatDate(null)).toBe('—');
+  });
+
+  it('returns "—" for empty string', () => {
+    expect(safeFormatDate('')).toBe('—');
+  });
+
+  it('returns "—" for unparseable date string', () => {
+    expect(safeFormatDate('not-a-date')).toBe('—');
+  });
+
+  it('returns a formatted date string for a valid ISO date', () => {
+    const result = safeFormatDate('2026-04-01T00:00:00Z');
+    expect(result).not.toBe('—');
+    expect(result).not.toContain('Invalid');
+    expect(result).toContain('2026');
   });
 });

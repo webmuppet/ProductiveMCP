@@ -142,11 +142,25 @@ describe('GetDealSchema', () => {
 // ─── CreateDealSchema ─────────────────────────────────────────────────────────
 
 describe('CreateDealSchema', () => {
-  const minValid = { name: 'Acme Deal', date: '2026-03-01', deal_status_id: '42' };
+  const minValid = { name: 'Acme Deal', date: '2026-03-01', deal_status_id: '42', probability: 50, currency: 'NZD' };
 
-  it('accepts minimal valid input (name, date, deal_status_id)', () => {
+  it('accepts minimal valid input (name, date, deal_status_id, probability, currency)', () => {
     const result = CreateDealSchema.safeParse(minValid);
     expect(result.success).toBe(true);
+  });
+
+  it('rejects missing probability', () => {
+    const { probability: _, ...withoutProbability } = minValid;
+    expect(CreateDealSchema.safeParse(withoutProbability).success).toBe(false);
+  });
+
+  it('rejects missing currency', () => {
+    const { currency: _, ...withoutCurrency } = minValid;
+    expect(CreateDealSchema.safeParse(withoutCurrency).success).toBe(false);
+  });
+
+  it('rejects empty currency string', () => {
+    expect(CreateDealSchema.safeParse({ ...minValid, currency: '' }).success).toBe(false);
   });
 
   it('accepts full valid input', () => {

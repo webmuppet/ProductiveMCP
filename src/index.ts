@@ -13,7 +13,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { ProductiveClient } from "./client.js";
-import { validateEnvironment } from "./utils/errors.js";
+import { validateEnvironment, detectStartupEnvironment } from "./utils/errors.js";
 import { TASK_TYPES, PRIORITIES, WORKFLOW_STATUSES } from "./constants.js";
 import { wrapWriteResponse } from "./utils/formatting.js";
 
@@ -298,8 +298,9 @@ let client = new ProductiveClient(
   process.env.PRODUCTIVE_ORG_ID!,
 );
 
-// Track current environment (production is always the default at startup)
-let currentEnvironment: "production" | "sandbox" = "production";
+// Detect environment at startup — handles per-call processes (Cowork) where
+// switch_environment never runs. Falls back to "production" when no env var is set.
+let currentEnvironment: "production" | "sandbox" = detectStartupEnvironment();
 
 // Initialize MCP server
 const server = new Server(
@@ -2217,7 +2218,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "productive_create_deal",
       description:
-        "Create a new deal in the sales pipeline. Requires name, start date, and deal_status_id. Optionally assign to a company, pipeline, and responsible person. Note: deal value/revenue is not set directly — it is computed from services. After creating a deal, use productive_create_service to add line items that define the deal value.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
+        "Create a new deal in the sales pipeline. Requires name, start date, deal_status_id, probability (0–100), and currency (e.g. 'NZD'). Optionally assign to a company, pipeline, and responsible person. Note: deal value/revenue is not set directly — it is computed from services. After creating a deal, use productive_create_service to add line items that define the deal value.\n\n⚠️ Always confirm the target project/location with the user before creating. Never repurpose an existing resource as a workaround.",
       inputSchema: {
         type: "object",
         properties: {

@@ -2,9 +2,10 @@
  * Tier 2: Unit tests for budget tool handlers (mocked client).
  *
  * Focuses on:
- * - Correct payload shape (budget:true, deal_type_id:2, no deal_status)
- * - Relationships built only when IDs provided
+ * - Correct payload shape (budget:true, deal_type_id:2, deal_status always present)
+ * - Relationships built only when IDs provided (project/company/responsible)
  * - Optional attributes omitted when not provided
+ * - Auto-fetch of deal_status_id when not explicitly provided
  * - Response formatted via formatBudget / formatSingleBudgetMarkdown
  */
 
@@ -59,6 +60,7 @@ describe('createBudget', () => {
     await createBudget(client, {
       name: 'Q2 Retainer',
       date: '2026-04-01',
+      deal_status_id: '99',
       response_format: 'json',
     });
 
@@ -72,34 +74,69 @@ describe('createBudget', () => {
     expect(payload.data.attributes.date).toBe('2026-04-01');
   });
 
-  it('does NOT include a deal_status relationship', async () => {
+  it('always includes deal_status relationship with provided deal_status_id', async () => {
     const client = createMockClient({ post: mockBudgetResponse() });
 
     await createBudget(client, {
-      name: 'Budget No Status',
+      name: 'Budget With Status',
       date: '2026-01-01',
+      deal_status_id: '99',
       response_format: 'json',
     });
 
     const payload = (client.post as ReturnType<typeof vi.fn>).mock.calls[0][1] as {
-      data: { relationships?: Record<string, unknown> };
+      data: { relationships: { deal_status: { data: { type: string; id: string } } } };
     };
-    expect(payload.data.relationships?.deal_status).toBeUndefined();
+    expect(payload.data.relationships.deal_status).toEqual({
+      data: { type: 'deal_statuses', id: '99' },
+    });
   });
 
-  it('omits relationships block when no IDs provided', async () => {
+  it('always includes deal_status; omits project/company/responsible when not provided', async () => {
     const client = createMockClient({ post: mockBudgetResponse() });
 
     await createBudget(client, {
       name: 'Bare Budget',
       date: '2026-01-01',
+      deal_status_id: '42',
       response_format: 'json',
     });
 
     const payload = (client.post as ReturnType<typeof vi.fn>).mock.calls[0][1] as {
-      data: { relationships?: unknown };
+      data: { relationships: Record<string, unknown> };
     };
-    expect(payload.data.relationships).toBeUndefined();
+    expect(payload.data.relationships.deal_status).toBeDefined();
+    expect(payload.data.relationships.project).toBeUndefined();
+    expect(payload.data.relationships.company).toBeUndefined();
+    expect(payload.data.relationships.responsible).toBeUndefined();
+  });
+
+  it('auto-fetches deal_status_id when not explicitly provided', async () => {
+    // Simulate GET /deal_statuses returning one status, then POST /deals succeeding
+    const client = {
+      get: vi.fn().mockResolvedValueOnce({ data: [{ id: '7', type: 'deal_statuses' }] }),
+      post: vi.fn().mockResolvedValue(mockBudgetResponse()),
+      patch: vi.fn(),
+      delete: vi.fn(),
+      getOrgId: vi.fn().mockReturnValue('test-org-123'),
+      getRateLimitStatus: vi.fn().mockReturnValue({ count: 0, limit: 100, remaining: 100 }),
+    } as unknown as import('../../src/client.js').ProductiveClient;
+
+    await createBudget(client, {
+      name: 'Auto Status Budget',
+      date: '2026-01-01',
+      response_format: 'json',
+    });
+
+    // First call should be to /deal_statuses
+    const getCall = (client.get as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(getCall[0]).toBe('/deal_statuses');
+
+    // POST payload should use the auto-fetched ID
+    const payload = (client.post as ReturnType<typeof vi.fn>).mock.calls[0][1] as {
+      data: { relationships: { deal_status: { data: { id: string } } } };
+    };
+    expect(payload.data.relationships.deal_status.data.id).toBe('7');
   });
 
   it('includes project relationship when project_id provided', async () => {
@@ -108,6 +145,7 @@ describe('createBudget', () => {
     await createBudget(client, {
       name: 'Project Budget',
       date: '2026-01-01',
+      deal_status_id: '99',
       project_id: '760385',
       response_format: 'json',
     });
@@ -126,6 +164,7 @@ describe('createBudget', () => {
     await createBudget(client, {
       name: 'Full Rels Budget',
       date: '2026-01-01',
+      deal_status_id: '99',
       company_id: '1153449',
       responsible_id: '1065388',
       response_format: 'json',
@@ -153,6 +192,7 @@ describe('createBudget', () => {
     await createBudget(client, {
       name: 'Budget With Extras',
       date: '2026-01-01',
+      deal_status_id: '99',
       end_date: '2026-12-31',
       currency: 'EUR',
       purchase_order_number: 'PO-999',
@@ -173,6 +213,7 @@ describe('createBudget', () => {
     await createBudget(client, {
       name: 'Minimal Budget',
       date: '2026-01-01',
+      deal_status_id: '99',
       response_format: 'json',
     });
 
@@ -190,6 +231,7 @@ describe('createBudget', () => {
     await createBudget(client, {
       name: 'Include Test',
       date: '2026-01-01',
+      deal_status_id: '99',
       response_format: 'markdown',
     });
 
@@ -203,6 +245,7 @@ describe('createBudget', () => {
     const result = await createBudget(client, {
       name: 'Markdown Budget',
       date: '2026-01-01',
+      deal_status_id: '99',
       response_format: 'markdown',
     });
 
@@ -217,6 +260,7 @@ describe('createBudget', () => {
     const result = await createBudget(client, {
       name: 'JSON Budget',
       date: '2026-01-01',
+      deal_status_id: '99',
       response_format: 'json',
     });
 

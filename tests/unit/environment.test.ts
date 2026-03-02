@@ -3,8 +3,9 @@
  * and environment-toggle related validation logic.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ProductiveClient } from '../../src/client.js';
+import { detectStartupEnvironment } from '../../src/utils/errors.js';
 
 // ─── ProductiveClient constructor ─────────────────────────────────────────────
 
@@ -54,5 +55,42 @@ describe('ProductiveClient constructor', () => {
     // Both start fresh — verifying they don't share state
     expect(client1.getRateLimitStatus().count).toBe(0);
     expect(client2.getRateLimitStatus().count).toBe(0);
+  });
+});
+
+// ─── detectStartupEnvironment ─────────────────────────────────────────────────
+
+describe('detectStartupEnvironment', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('returns "production" when no relevant env vars are set', () => {
+    vi.stubEnv('PRODUCTIVE_ENV', '');
+    vi.stubEnv('PRODUCTIVE_BASE_URL', '');
+    expect(detectStartupEnvironment()).toBe('production');
+  });
+
+  it('returns "sandbox" when PRODUCTIVE_ENV=sandbox', () => {
+    vi.stubEnv('PRODUCTIVE_ENV', 'sandbox');
+    expect(detectStartupEnvironment()).toBe('sandbox');
+  });
+
+  it('returns "production" when PRODUCTIVE_ENV is not "sandbox"', () => {
+    vi.stubEnv('PRODUCTIVE_ENV', 'production');
+    vi.stubEnv('PRODUCTIVE_BASE_URL', '');
+    expect(detectStartupEnvironment()).toBe('production');
+  });
+
+  it('returns "sandbox" when PRODUCTIVE_BASE_URL contains "sandbox"', () => {
+    vi.stubEnv('PRODUCTIVE_ENV', '');
+    vi.stubEnv('PRODUCTIVE_BASE_URL', 'https://api-sandbox.productive.io/api/v2');
+    expect(detectStartupEnvironment()).toBe('sandbox');
+  });
+
+  it('returns "production" when PRODUCTIVE_BASE_URL does not contain "sandbox"', () => {
+    vi.stubEnv('PRODUCTIVE_ENV', '');
+    vi.stubEnv('PRODUCTIVE_BASE_URL', 'https://api.productive.io/api/v2');
+    expect(detectStartupEnvironment()).toBe('production');
   });
 });
