@@ -119,25 +119,40 @@ describe('listCompanies', () => {
     expect(params['filter[name]']).toBe('Acme');
   });
 
-  it('sends filter[archived]=false for status=active', async () => {
+  it('never sends filter[archived] to the API (client-side filtering only)', async () => {
+    // The Productive API filter[archived] does not work — filtering is client-side.
     const client = createMockClient({ get: { data: [], meta: { total_count: 0 } } });
     await listCompanies(client, { status: 'active', limit: 20, offset: 0, response_format: 'markdown' });
     const params = (client.get as ReturnType<typeof vi.fn>).mock.calls[0][1];
-    expect(params['filter[archived]']).toBe(false);
-  });
-
-  it('sends filter[archived]=true for status=archived', async () => {
-    const client = createMockClient({ get: { data: [], meta: { total_count: 0 } } });
-    await listCompanies(client, { status: 'archived', limit: 20, offset: 0, response_format: 'markdown' });
-    const params = (client.get as ReturnType<typeof vi.fn>).mock.calls[0][1];
-    expect(params['filter[archived]']).toBe(true);
-  });
-
-  it('does NOT send filter[archived] when status is omitted', async () => {
-    const client = createMockClient({ get: { data: [], meta: { total_count: 0 } } });
-    await listCompanies(client, { limit: 20, offset: 0, response_format: 'markdown' });
-    const params = (client.get as ReturnType<typeof vi.fn>).mock.calls[0][1];
     expect(params['filter[archived]']).toBeUndefined();
+  });
+
+  it('filters out archived companies by default (client-side)', async () => {
+    const mockData = {
+      data: [
+        { type: 'companies', id: '1', attributes: { ...mockCompanyAttributes(), name: 'Active Co' } },
+        { type: 'companies', id: '2', attributes: { ...mockCompanyAttributes(), name: 'Old Co', archived_at: '2026-01-01T00:00:00Z' } },
+      ],
+      meta: { total_count: 2 },
+    };
+    const client = createMockClient({ get: mockData });
+    const result = await listCompanies(client, { limit: 20, offset: 0, response_format: 'markdown' });
+    expect(result).toContain('Active Co');
+    expect(result).not.toContain('Old Co');
+  });
+
+  it('returns only archived companies when status=archived (client-side)', async () => {
+    const mockData = {
+      data: [
+        { type: 'companies', id: '1', attributes: { ...mockCompanyAttributes(), name: 'Active Co' } },
+        { type: 'companies', id: '2', attributes: { ...mockCompanyAttributes(), name: 'Old Co', archived_at: '2026-01-01T00:00:00Z' } },
+      ],
+      meta: { total_count: 2 },
+    };
+    const client = createMockClient({ get: mockData });
+    const result = await listCompanies(client, { status: 'archived', limit: 20, offset: 0, response_format: 'markdown' });
+    expect(result).not.toContain('Active Co');
+    expect(result).toContain('Old Co');
   });
 
   it('sends sort param with sort_by and sort_order=asc', async () => {

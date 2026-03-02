@@ -48,13 +48,6 @@ export async function listCompanies(
   };
 
   if (args.name) params["filter[name]"] = args.name;
-
-  if (args.status === "archived") {
-    params["filter[archived]"] = true;
-  } else if (args.status === "active") {
-    params["filter[archived]"] = false;
-  }
-
   if (args.tags) params["filter[tag_list]"] = args.tags;
   if (args.default_currency) params["filter[default_currency]"] = args.default_currency;
 
@@ -66,9 +59,17 @@ export async function listCompanies(
 
   const response = await client.get<JSONAPIResponse>("/companies", params);
 
-  const companies = (
+  // The Productive API does not support filter[archived] — filter client-side.
+  // Default behaviour (no status arg) excludes archived companies.
+  let companies = (
     Array.isArray(response.data) ? response.data : [response.data]
   ).map((c) => formatCompany(c as Company));
+
+  if (args.status === "archived") {
+    companies = companies.filter((c) => c.archived_at !== null);
+  } else if (!args.status || args.status === "active") {
+    companies = companies.filter((c) => c.archived_at === null);
+  }
 
   const total = response.meta?.total_count;
   const totalPages = response.meta?.total_pages as number | undefined;
