@@ -6,3 +6,4 @@ productive.config.json
 *.log
 .DS_Store
 briefs/
+*.plugin
